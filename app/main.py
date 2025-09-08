@@ -24,34 +24,47 @@ AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_
 AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
 AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-35-turbo")
 
-if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_KEY:
-    raise RuntimeError("❌ Missing Azure OpenAI credentials. Check your `.env` file.")
+# Note: Environment variables will be checked when client is first initialized
 
 # -----------------------------
-# Azure OpenAI client
+# Azure OpenAI client (lazy initialization)
 # -----------------------------
-try:
-    # Initialize with minimal parameters to avoid compatibility issues
-    client = AzureOpenAI(
-        api_key=AZURE_OPENAI_KEY,
-        api_version=AZURE_OPENAI_API_VERSION,
-        azure_endpoint=AZURE_OPENAI_ENDPOINT
-    )
-    logging.info("✅ Azure OpenAI client initialized successfully")
-except Exception as e:
-    logging.error(f"❌ Failed to initialize Azure OpenAI client: {e}")
-    # Try alternative initialization
+client = None
+
+def get_azure_client():
+    global client
+    if client is not None:
+        return client
+    
+    # Check if environment variables are available
+    if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_KEY:
+        logging.error("❌ Missing Azure OpenAI credentials. Check your environment variables.")
+        return None
+    
     try:
-        import openai
-        openai.api_type = "azure"
-        openai.api_base = AZURE_OPENAI_ENDPOINT
-        openai.api_version = AZURE_OPENAI_API_VERSION
-        openai.api_key = AZURE_OPENAI_KEY
-        client = openai
-        logging.info("✅ Azure OpenAI client initialized with alternative method")
-    except Exception as e2:
-        logging.error(f"❌ Alternative initialization also failed: {e2}")
-        client = None
+        # Initialize with minimal parameters to avoid compatibility issues
+        client = AzureOpenAI(
+            api_key=AZURE_OPENAI_KEY,
+            api_version=AZURE_OPENAI_API_VERSION,
+            azure_endpoint=AZURE_OPENAI_ENDPOINT
+        )
+        logging.info("✅ Azure OpenAI client initialized successfully")
+        return client
+    except Exception as e:
+        logging.error(f"❌ Failed to initialize Azure OpenAI client: {e}")
+        # Try alternative initialization
+        try:
+            import openai
+            openai.api_type = "azure"
+            openai.api_base = AZURE_OPENAI_ENDPOINT
+            openai.api_version = AZURE_OPENAI_API_VERSION
+            openai.api_key = AZURE_OPENAI_KEY
+            client = openai
+            logging.info("✅ Azure OpenAI client initialized with alternative method")
+            return client
+        except Exception as e2:
+            logging.error(f"❌ Alternative initialization also failed: {e2}")
+            return None
 
 # -----------------------------
 # FastAPI setup
@@ -156,13 +169,14 @@ async def root():
 
 @app.get("/health")
 async def health_check():
+    test_client = get_azure_client()
     return {
         "status": "ok",
         "env": {
             "endpoint": AZURE_OPENAI_ENDPOINT,
             "deployment": AZURE_OPENAI_DEPLOYMENT,
             "api_version": AZURE_OPENAI_API_VERSION,
-            "client_initialized": client is not None
+            "client_initialized": test_client is not None
         }
     }
 
@@ -258,6 +272,7 @@ def get_enhanced_response(user_id: str, text: str, enabled_intents: set):
 # -----------------------------
 def generate_chatgpt_response(user_message: str, context: str) -> str:
     try:
+        client = get_azure_client()
         if client is None:
             return "I'm currently unable to process your request. Please try again later."
         
