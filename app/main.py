@@ -30,11 +30,16 @@ if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_KEY:
 # -----------------------------
 # Azure OpenAI client
 # -----------------------------
-client = AzureOpenAI(
-    api_version=AZURE_OPENAI_API_VERSION,
-    azure_endpoint=AZURE_OPENAI_ENDPOINT,
-    api_key=AZURE_OPENAI_KEY
-)
+try:
+    client = AzureOpenAI(
+        api_version=AZURE_OPENAI_API_VERSION,
+        azure_endpoint=AZURE_OPENAI_ENDPOINT,
+        api_key=AZURE_OPENAI_KEY
+    )
+    logging.info("✅ Azure OpenAI client initialized successfully")
+except Exception as e:
+    logging.error(f"❌ Failed to initialize Azure OpenAI client: {e}")
+    client = None
 
 # -----------------------------
 # FastAPI setup
@@ -145,6 +150,7 @@ async def health_check():
             "endpoint": AZURE_OPENAI_ENDPOINT,
             "deployment": AZURE_OPENAI_DEPLOYMENT,
             "api_version": AZURE_OPENAI_API_VERSION,
+            "client_initialized": client is not None
         }
     }
 
@@ -240,6 +246,9 @@ def get_enhanced_response(user_id: str, text: str, enabled_intents: set):
 # -----------------------------
 def generate_chatgpt_response(user_message: str, context: str) -> str:
     try:
+        if client is None:
+            return "I'm currently unable to process your request. Please try again later."
+        
         prompt = f"""
 You are Sarathi AI, a MyPursu assistant. Only answer questions about MyPursu services, guides, or features. 
 Do NOT answer unrelated questions. If unrelated, reply: "I can only answer questions about MyPursu services."
