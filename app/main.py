@@ -21,8 +21,8 @@ load_dotenv()
 
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_KEY")
-AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
-AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "sarathi-deploy")
+AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
+AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-35-turbo")
 
 if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_KEY:
     raise RuntimeError("❌ Missing Azure OpenAI credentials. Check your `.env` file.")
@@ -31,15 +31,27 @@ if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_KEY:
 # Azure OpenAI client
 # -----------------------------
 try:
+    # Initialize with minimal parameters to avoid compatibility issues
     client = AzureOpenAI(
+        api_key=AZURE_OPENAI_KEY,
         api_version=AZURE_OPENAI_API_VERSION,
-        azure_endpoint=AZURE_OPENAI_ENDPOINT,
-        api_key=AZURE_OPENAI_KEY
+        azure_endpoint=AZURE_OPENAI_ENDPOINT
     )
     logging.info("✅ Azure OpenAI client initialized successfully")
 except Exception as e:
     logging.error(f"❌ Failed to initialize Azure OpenAI client: {e}")
-    client = None
+    # Try alternative initialization
+    try:
+        import openai
+        openai.api_type = "azure"
+        openai.api_base = AZURE_OPENAI_ENDPOINT
+        openai.api_version = AZURE_OPENAI_API_VERSION
+        openai.api_key = AZURE_OPENAI_KEY
+        client = openai
+        logging.info("✅ Azure OpenAI client initialized with alternative method")
+    except Exception as e2:
+        logging.error(f"❌ Alternative initialization also failed: {e2}")
+        client = None
 
 # -----------------------------
 # FastAPI setup
@@ -257,13 +269,26 @@ Use the following context: {context}
 User asked: "{user_message}"
 Provide a concise, user-friendly answer.
 """
-        response = client.chat.completions.create(
-            model=AZURE_OPENAI_DEPLOYMENT,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=300
-        )
-        final_reply = response.choices[0].message.content
+        
+        # Handle both new and legacy client formats
+        if hasattr(client, 'chat') and hasattr(client.chat, 'completions'):
+            # New client format
+            response = client.chat.completions.create(
+                model=AZURE_OPENAI_DEPLOYMENT,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.5,
+                max_tokens=300
+            )
+            final_reply = response.choices[0].message.content
+        else:
+            # Legacy client format
+            response = client.ChatCompletion.create(
+                engine=AZURE_OPENAI_DEPLOYMENT,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.5,
+                max_tokens=300
+            )
+            final_reply = response.choices[0].message.content
 
         now = datetime.utcnow().isoformat()
         # Save Q&A in DB with proper defaults
