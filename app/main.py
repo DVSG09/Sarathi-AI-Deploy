@@ -333,7 +333,9 @@ Provide a concise, user-friendly answer.
         return final_reply
     except Exception as e:
         logging.error(f"ChatGPT error: {e}")
-        return "Oops! I couldn't generate a response. Please try again."
+        logging.error(f"Client type: {type(client)}")
+        logging.error(f"Environment variables - Endpoint: {AZURE_OPENAI_ENDPOINT}, Key: {'SET' if AZURE_OPENAI_KEY else 'NOT SET'}, Deployment: {AZURE_OPENAI_DEPLOYMENT}")
+        return f"Oops! I couldn't generate a response. Error: {str(e)}"
 
 # -----------------------------
 # Chat endpoint
