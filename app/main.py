@@ -7,7 +7,7 @@ import os
 import re
 import sqlite3
 from dotenv import load_dotenv
-from openai import AzureOpenAI
+# Using older openai library format
 import logging
 import requests
 from bs4 import BeautifulSoup
@@ -42,29 +42,18 @@ def get_azure_client():
         return None
     
     try:
-        # Initialize with minimal parameters to avoid compatibility issues
-        client = AzureOpenAI(
-            api_key=AZURE_OPENAI_KEY,
-            api_version=AZURE_OPENAI_API_VERSION,
-            azure_endpoint=AZURE_OPENAI_ENDPOINT
-        )
+        # Use the older openai library format (0.28.1)
+        import openai
+        openai.api_type = "azure"
+        openai.api_base = AZURE_OPENAI_ENDPOINT
+        openai.api_version = AZURE_OPENAI_API_VERSION
+        openai.api_key = AZURE_OPENAI_KEY
+        client = openai
         logging.info("✅ Azure OpenAI client initialized successfully")
         return client
     except Exception as e:
         logging.error(f"❌ Failed to initialize Azure OpenAI client: {e}")
-        # Try alternative initialization
-        try:
-            import openai
-            openai.api_type = "azure"
-            openai.api_base = AZURE_OPENAI_ENDPOINT
-            openai.api_version = AZURE_OPENAI_API_VERSION
-            openai.api_key = AZURE_OPENAI_KEY
-            client = openai
-            logging.info("✅ Azure OpenAI client initialized with alternative method")
-            return client
-        except Exception as e2:
-            logging.error(f"❌ Alternative initialization also failed: {e2}")
-            return None
+        return None
 
 # -----------------------------
 # FastAPI setup
@@ -285,25 +274,14 @@ User asked: "{user_message}"
 Provide a concise, user-friendly answer.
 """
         
-        # Handle both new and legacy client formats
-        if hasattr(client, 'chat') and hasattr(client.chat, 'completions'):
-            # New client format
-            response = client.chat.completions.create(
-                model=AZURE_OPENAI_DEPLOYMENT,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,
-                max_tokens=300
-            )
-            final_reply = response.choices[0].message.content
-        else:
-            # Legacy client format
-            response = client.ChatCompletion.create(
-                engine=AZURE_OPENAI_DEPLOYMENT,
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.5,
-                max_tokens=300
-            )
-            final_reply = response.choices[0].message.content
+        # Use the older openai library format (0.28.1)
+        response = client.ChatCompletion.create(
+            engine=AZURE_OPENAI_DEPLOYMENT,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.5,
+            max_tokens=300
+        )
+        final_reply = response.choices[0].message.content
 
         now = datetime.utcnow().isoformat()
         # Save Q&A in DB with proper defaults
