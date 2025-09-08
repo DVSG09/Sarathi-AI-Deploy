@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sarathi - AI Support</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 20px;
+        background: #f9fafb;
+      }
+      h2 {
+        color: #2b7de9;
+        text-align: center;
+      }
+      .chat-box {
+        width: 100%;
+        max-width: 600px;
+        margin: auto;
+      }
+      textarea,
+      button {
+        width: 100%;
+        margin: 10px 0;
+        padding: 10px;
+        font-size: 16px;
+      }
+      button {
+        background: #2b7de9;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #1a5bbf;
+      }
+      .response {
+        background: #f0f0f0;
+        padding: 10px;
+        border-radius: 4px;
+        margin-top: 10px;
+        white-space: pre-wrap;
+      }
+      .service-buttons {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+        margin-top: 10px;
+      }
+      .service-buttons button {
+        width: 100%;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="chat-box">
+      <h2>Sarathi AI Chatbot</h2>
+      <label for="user-input">Your Message:</label>
+      <textarea
+        id="user-input"
+        rows="3"
+        placeholder="Type your message..."
+      ></textarea>
+      <button onclick="sendMessage()">Send</button>
+
+      <!-- Service Buttons -->
+      <div class="service-buttons">
+        <button onclick="handleService('Scan & Pay')">Scan & Pay</button>
+        <button onclick="handleService('Pay to UPI')">Pay to UPI</button>
+        <button onclick="handleService('Pay to Static QR')">
+          Pay to Static QR
+        </button>
+        <button onclick="handleService('Concierge Package')">
+          Concierge Package
+        </button>
+        <button onclick="handleService('Bill Payments')">Bill Payments</button>
+        <button onclick="handleService('Travel Bookings')">
+          Travel Bookings
+        </button>
+        <button onclick="handleService('Mail Box')">Mail Box</button>
+        <button onclick="handleService('Pack N Ship')">Pack N Ship</button>
+        <button onclick="handleService('Withdraw')">Withdraw</button>
+        <button onclick="handleService('History')">History</button>
+        <button onclick="handleService('Remit2Any')">Remit2Any</button>
+      </div>
+
+      <div id="bot-response" class="response" style="display: none"></div>
+    </div>
+
+    <script>
+      // Backend URL - Replace with your Render URL after deployment
+      const BACKEND_BASE = "https://<YOUR-RENDER-URL>";
+      const API_URL = `${BACKEND_BASE}/chat`;
+
+      // Load feed from backend route /feed
+      let feedData = [];
+      async function loadFeed() {
+        try {
+          const res = await fetch(`${BACKEND_BASE}/feed`); // Dynamic backend feed
+          feedData = await res.json();
+        } catch (err) {
+          console.error("Error loading feed:", err);
+        }
+      }
+      loadFeed();
+
+      // Function to handle button clicks
+      function handleService(serviceName) {
+        if (feedData.length === 0) {
+          console.warn("Feed data not loaded yet.");
+          return;
+        }
+
+        const matched = feedData.find((item) =>
+          item.content.toLowerCase().includes(serviceName.toLowerCase())
+        );
+
+        const responseDiv = document.getElementById("bot-response");
+        if (matched) {
+          responseDiv.textContent = `Sarathi: ${matched.content}`;
+          responseDiv.style.display = "block";
+        } else {
+          responseDiv.textContent = `Sarathi: Sorry, I don't have info about "${serviceName}" right now.`;
+          responseDiv.style.display = "block";
+        }
+      }
+
+      // Existing sendMessage() function
+      async function sendMessage() {
+        const inputEl = document.getElementById("user-input");
+        const input = inputEl.value.trim();
+        const responseDiv = document.getElementById("bot-response");
+
+        if (!input) return;
+
+        responseDiv.style.display = "none";
+        responseDiv.textContent = "";
+
+        try {
+          const res = await fetch(API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: input }),
+          });
+
+          const data = await res.json();
+          responseDiv.textContent = "Sarathi: " + data.response;
+          responseDiv.style.display = "block";
+        } catch (err) {
+          responseDiv.textContent = "Error: " + err.message;
+          responseDiv.style.display = "block";
+        }
+
+        inputEl.value = "";
+      }
+
+      // Press Enter to send
+      document
+        .getElementById("user-input")
+        .addEventListener("keypress", function (e) {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            sendMessage();
+          }
+        });
+    </script>
+  </body>
+</html>

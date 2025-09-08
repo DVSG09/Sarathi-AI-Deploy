@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: sarathi-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: AZURE_OPENAI_ENDPOINT
+        sync: false
+      - key: AZURE_OPENAI_API_KEY
+        sync: false
+      - key: AZURE_OPENAI_API_VERSION
+        value: "2025-01-01-preview"
+      - key: AZURE_OPENAI_DEPLOYMENT
+        value: "sarathi-deploy"
+    healthCheckPath: /health
