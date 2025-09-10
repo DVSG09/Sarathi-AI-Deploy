@@ -186,7 +186,11 @@
         display: flex;
         flex-direction: column;
         transition: transform 0.3s ease;
-        position: relative;
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        z-index: 1000;
       }
       
       .sidebar.collapsed {
@@ -458,6 +462,7 @@
         color: #64748b;
         font-size: 13px;
         transition: all 0.2s;
+        position: relative;
       }
       
       .media-item:hover {
@@ -485,6 +490,32 @@
         margin-left: 8px;
       }
       
+      .media-delete-btn {
+        opacity: 0;
+        width: 18px;
+        height: 18px;
+        border: none;
+        background: none;
+        color: #ef4444;
+        cursor: pointer;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        transition: all 0.2s;
+        margin-left: 8px;
+      }
+      
+      .media-item:hover .media-delete-btn {
+        opacity: 1;
+      }
+      
+      .media-delete-btn:hover {
+        background: #fef2f2;
+        color: #dc2626;
+      }
+      
       .file-input {
         display: none;
       }
@@ -494,15 +525,17 @@
         flex: 1;
         display: flex;
         flex-direction: column;
-        margin-left: 280px;
         padding-top: 60px;
-        transition: margin-left 0.3s ease;
+        transition: all 0.3s ease;
         background: #f8fafc;
         min-height: 100vh;
+        position: relative;
+        width: 100%;
+        margin-left: 0;
       }
       
-      .main-content.sidebar-collapsed {
-        margin-left: 0;
+      .main-content.sidebar-open {
+        margin-left: 280px;
       }
       
       .chat-container {
@@ -510,12 +543,18 @@
         display: flex;
         flex-direction: column;
         background: #ffffff;
-        margin: 20px;
+        margin: 20px auto;
+        max-width: 1200px;
+        width: calc(100% - 40px);
         border-radius: 16px;
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
         overflow: hidden;
         border: 1px solid #e2e8f0;
         position: relative;
+      }
+      
+      .main-content.sidebar-open .chat-container {
+        max-width: 1000px;
       }
       
       .chat-container::before {
@@ -609,29 +648,6 @@
         color: white;
       }
       
-      .service-buttons {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 12px;
-      }
-      
-      .service-btn {
-        background: #f1f5f9;
-        border: 1px solid #e2e8f0;
-        color: #475569;
-        padding: 8px 12px;
-        border-radius: 20px;
-        font-size: 12px;
-        font-weight: 500;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      
-      .service-btn:hover {
-        background: #e2e8f0;
-        color: #1e293b;
-      }
       
       .quick-actions {
         display: flex;
@@ -756,7 +772,6 @@
       <div class="header-right">
         <button class="header-btn download-btn" title="Download Chat" id="download-btn">⬇</button>
         <button class="header-btn upload-btn" title="Upload Files" id="upload-btn">⬆</button>
-        <button class="header-btn" title="Refresh">↻</button>
         <button class="header-btn" title="More">⋯</button>
       </div>
     </div>
@@ -890,14 +905,23 @@
       let currentChatId = null;
       let currentChatMessages = [];
       let filteredChatHistory = [];
-      let sidebarCollapsed = false;
+      let sidebarCollapsed = true; // Default to collapsed
 
       window.onload = () => {
         loadChatHistory();
         loadMediaLibrary();
         startNewChat();
         setupEventListeners();
+        initializeSidebarState();
       };
+
+      function initializeSidebarState() {
+        // Set initial sidebar state
+        sidebar.classList.toggle('collapsed', sidebarCollapsed);
+        mainContent.classList.toggle('sidebar-open', !sidebarCollapsed);
+        sidebarToggle.textContent = sidebarCollapsed ? '☰' : '✕';
+        sidebarToggle.style.left = sidebarCollapsed ? '20px' : '300px';
+      }
 
       function setupEventListeners() {
         // Dropdown toggle
@@ -963,8 +987,15 @@
         sidebarToggle.onclick = () => {
           sidebarCollapsed = !sidebarCollapsed;
           sidebar.classList.toggle('collapsed', sidebarCollapsed);
-          mainContent.classList.toggle('sidebar-collapsed', sidebarCollapsed);
+          mainContent.classList.toggle('sidebar-open', !sidebarCollapsed);
           sidebarToggle.textContent = sidebarCollapsed ? '☰' : '✕';
+          
+          // Adjust sidebar toggle position
+          if (sidebarCollapsed) {
+            sidebarToggle.style.left = '20px';
+          } else {
+            sidebarToggle.style.left = '300px';
+          }
         };
 
         // Collapsible sections functionality
@@ -1016,9 +1047,18 @@
           size.className = "media-size";
           size.textContent = formatFileSize(file.size);
           
+          const deleteBtn = document.createElement("button");
+          deleteBtn.className = "media-delete-btn";
+          deleteBtn.innerHTML = "×";
+          deleteBtn.onclick = (e) => {
+            e.stopPropagation();
+            deleteMediaFile(file.id);
+          };
+          
           mediaItem.appendChild(icon);
           mediaItem.appendChild(name);
           mediaItem.appendChild(size);
+          mediaItem.appendChild(deleteBtn);
           
           mediaItem.onclick = () => {
             // Find and load the chat that contains this file
@@ -1045,6 +1085,22 @@
         const sizes = ['B', 'KB', 'MB', 'GB'];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
         return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+      }
+
+      function deleteMediaFile(fileId) {
+        if (confirm('Are you sure you want to delete this file?')) {
+          // Remove file from mediaFiles array
+          mediaFiles = mediaFiles.filter(file => file.id !== fileId);
+          
+          // Save updated mediaFiles to localStorage
+          localStorage.setItem('mediaFiles', JSON.stringify(mediaFiles));
+          
+          // Reload the media library
+          loadMediaLibrary();
+          
+          // Show confirmation message
+          appendMessage(`🗑️ File deleted successfully`, 'bot');
+        }
       }
 
       function downloadChatHistory() {
@@ -1088,12 +1144,9 @@
         messagesDiv.innerHTML = '';
         
         appendMessage(
-          "Welcome to MyPursu! 👋 I'm Sarathi. How can I help you today? Pick a service to get started:",
+          "Welcome to MyPursu! 👋 I'm Sarathi. How can I help you today?",
           "bot"
         );
-        
-        // Add service buttons to the welcome message
-        addServiceButtons();
       }
 
       function loadChatHistory() {
@@ -1258,60 +1311,7 @@
         }
       }
 
-      function addServiceButtons() {
-        const lastMessage = messagesDiv.lastElementChild;
-        if (lastMessage && lastMessage.classList.contains("bot")) {
-          const serviceButtons = document.createElement("div");
-          serviceButtons.className = "service-buttons";
-          
-          const services = [
-            "Remit2Any",
-            "UPI Payments", 
-            "Concierge Packages",
-            "Bill Payments",
-            "Travel Bookings"
-          ];
-          
-          services.forEach(service => {
-            const btn = document.createElement("button");
-            btn.className = "service-btn";
-            btn.textContent = service;
-            btn.onclick = () => {
-              appendMessage(`Tell me about ${service}`, "user");
-              sendServiceMessage(service);
-            };
-            serviceButtons.appendChild(btn);
-          });
-          
-          lastMessage.appendChild(serviceButtons);
-        }
-      }
 
-      function sendServiceMessage(service) {
-        const typingMsg = document.createElement("div");
-        typingMsg.className = "message bot";
-        typingMsg.innerHTML = `
-          <div class="message-avatar">S</div>
-          <div class="message-content">🤖 Sarathi is typing...</div>
-        `;
-        messagesDiv.appendChild(typingMsg);
-        messagesDiv.scrollTop = messagesDiv.scrollHeight;
-
-        fetch("/service", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ service }),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            messagesDiv.removeChild(typingMsg);
-            appendMessage(data.response || "No response from server", "bot");
-          })
-          .catch(() => {
-            messagesDiv.removeChild(typingMsg);
-            appendMessage("Error: Could not get service response", "bot");
-          });
-      }
 
       // Send user message
       sendButton.onclick = async () => {
