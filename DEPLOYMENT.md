@@ -30,3 +30,4 @@ The application includes a health check endpoint at `/health` that Render will u
 - `POST /chat` - Chat endpoint
 - `GET /feed` - Get feed data
 - `GET /health` - Health check
+

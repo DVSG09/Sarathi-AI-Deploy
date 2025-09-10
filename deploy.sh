@@ -36,3 +36,4 @@ echo "3. After deployment, update sarathi-frontend.html with your Render URL"
 echo "4. Upload the updated frontend to your hosting service"
 echo ""
 echo "🎯 Your backend will be available at: https://<your-service-name>.onrender.com"
+

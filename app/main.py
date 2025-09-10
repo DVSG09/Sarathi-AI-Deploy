@@ -7,7 +7,7 @@ import os
 import re
 import sqlite3
 from dotenv import load_dotenv
-# Using older openai library format
+import openai
 import logging
 import requests
 from bs4 import BeautifulSoup
@@ -21,39 +21,20 @@ load_dotenv()
 
 AZURE_OPENAI_ENDPOINT = os.getenv("AZURE_OPENAI_ENDPOINT")
 AZURE_OPENAI_KEY = os.getenv("AZURE_OPENAI_API_KEY") or os.getenv("AZURE_OPENAI_KEY")
-AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2024-12-01-preview")
-AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "gpt-35-turbo")
+AZURE_OPENAI_API_VERSION = os.getenv("AZURE_OPENAI_API_VERSION", "2025-01-01-preview")
+AZURE_OPENAI_DEPLOYMENT = os.getenv("AZURE_OPENAI_DEPLOYMENT", "sarathi-deploy")
 
-# Note: Environment variables will be checked when client is first initialized
+if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_KEY:
+    raise RuntimeError("❌ Missing Azure OpenAI credentials. Check your `.env` file.")
 
 # -----------------------------
-# Azure OpenAI client (lazy initialization)
+# Azure OpenAI client
 # -----------------------------
-client = None
-
-def get_azure_client():
-    global client
-    if client is not None:
-        return client
-    
-    # Check if environment variables are available
-    if not AZURE_OPENAI_ENDPOINT or not AZURE_OPENAI_KEY:
-        logging.error("❌ Missing Azure OpenAI credentials. Check your environment variables.")
-        return None
-    
-    try:
-        # Use the older openai library format (0.28.1)
-        import openai
-        openai.api_type = "azure"
-        openai.api_base = AZURE_OPENAI_ENDPOINT
-        openai.api_version = AZURE_OPENAI_API_VERSION
-        openai.api_key = AZURE_OPENAI_KEY
-        client = openai
-        logging.info("✅ Azure OpenAI client initialized successfully")
-        return client
-    except Exception as e:
-        logging.error(f"❌ Failed to initialize Azure OpenAI client: {e}")
-        return None
+# Configure OpenAI for Azure
+openai.api_type = "azure"
+openai.api_base = AZURE_OPENAI_ENDPOINT
+openai.api_version = AZURE_OPENAI_API_VERSION
+openai.api_key = AZURE_OPENAI_KEY
 
 # -----------------------------
 # FastAPI setup
@@ -158,14 +139,12 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    test_client = get_azure_client()
     return {
         "status": "ok",
         "env": {
             "endpoint": AZURE_OPENAI_ENDPOINT,
             "deployment": AZURE_OPENAI_DEPLOYMENT,
             "api_version": AZURE_OPENAI_API_VERSION,
-            "client_initialized": test_client is not None
         }
     }
 
@@ -184,7 +163,28 @@ def _clean_text(s: str) -> str:
 def fetch_db_context(user_message: str, max_entries: int = 5) -> str:
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
+    
+    # Enhanced keyword extraction
     qwords = {w for w in re.findall(r"[A-Za-z0-9]{3,}", user_message.lower())}
+    
+    # Add common synonyms and related terms
+    synonyms = {
+        'pay': ['payment', 'transfer', 'send', 'money'],
+        'bill': ['bills', 'utility', 'electricity', 'water', 'gas'],
+        'book': ['booking', 'reserve', 'travel', 'flight', 'hotel'],
+        'send': ['transfer', 'remit', 'money', 'cash'],
+        'receive': ['get', 'collect', 'mailbox', 'parcel'],
+        'help': ['support', 'assist', 'guide', 'how'],
+        'account': ['profile', 'wallet', 'balance', 'kyc'],
+        'app': ['application', 'mobile', 'download', 'install']
+    }
+    
+    # Expand query with synonyms
+    expanded_words = set(qwords)
+    for word in qwords:
+        if word in synonyms:
+            expanded_words.update(synonyms[word])
+    
     scored = []
 
     try:
@@ -194,8 +194,34 @@ def fetch_db_context(user_message: str, max_entries: int = 5) -> str:
             content = (row[5] or "").strip()
             if not content:
                 continue
-            score = sum(content.lower().count(w) for w in qwords) + 0.1
-            scored.append((score, row[2], content))
+            
+            # Enhanced scoring with synonyms
+            content_lower = content.lower()
+            score = 0
+            
+            # Original word matches
+            for word in qwords:
+                score += content_lower.count(word) * 2
+            
+            # Synonym matches (lower weight)
+            for word in expanded_words:
+                if word not in qwords:  # Don't double count
+                    score += content_lower.count(word) * 0.5
+            
+            # Bonus for title matches
+            title = (row[3] or "").lower()
+            for word in qwords:
+                if word in title:
+                    score += 3
+            
+            # Bonus for tag matches
+            tags = (row[4] or "").lower()
+            for word in qwords:
+                if word in tags:
+                    score += 2
+            
+            if score > 0:
+                scored.append((score, row[2], content))
     except Exception as e:
         logging.error(f"DB fetch error: {e}")
     finally:
@@ -249,11 +275,19 @@ def build_feed_context(user_message: str, max_chars: int = 4000, k: int = 5) -> 
 # -----------------------------
 def get_enhanced_response(user_id: str, text: str, enabled_intents: set):
     text_lower = text.lower()
-    intent = "faq"
+    
+    # Check if it's a service selection
+    if text_lower in [s.lower() for s in enabled_intents]:
+        intent = "service"
+        reply_text = "✅ You selected the service."
+    else:
+        # For all other questions, use ChatGPT
+        intent = "chatgpt"
+        reply_text = ""
+    
     escalated = False
     tool_calls = []
     metadata = {}
-    reply_text = "✅ You selected the service." if text_lower in [s.lower() for s in enabled_intents] else ""
     return reply_text, tool_calls, escalated, intent, metadata
 
 # -----------------------------
@@ -261,25 +295,23 @@ def get_enhanced_response(user_id: str, text: str, enabled_intents: set):
 # -----------------------------
 def generate_chatgpt_response(user_message: str, context: str) -> str:
     try:
-        client = get_azure_client()
-        if client is None:
-            return "I'm currently unable to process your request. Please try again later."
-        
         prompt = f"""
-You are Sarathi AI, a MyPursu assistant. Only answer questions about MyPursu services, guides, or features. 
-Do NOT answer unrelated questions. If unrelated, reply: "I can only answer questions about MyPursu services."
-Use the following context: {context}
+You are Sarathi AI, a helpful and friendly assistant. You can answer any questions - general questions, MyPursu services, or anything else.
 
-User asked: "{user_message}"
-Provide a concise, user-friendly answer.
+CONTEXT INFORMATION:
+{context}
+
+USER QUESTION: "{user_message}"
+
+Please provide a helpful, detailed answer. If the question is about MyPursu services, use the context information to give specific details. If it's a general question (like math, weather, general knowledge), answer it directly and naturally.
+
+Be friendly, informative, and always try to be helpful. Answer questions directly without unnecessary restrictions or apologies.
 """
-        
-        # Use the older openai library format (0.28.1)
-        response = client.ChatCompletion.create(
+        response = openai.ChatCompletion.create(
             engine=AZURE_OPENAI_DEPLOYMENT,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.5,
-            max_tokens=300
+            temperature=0.3,  # Lower temperature for more consistent responses
+            max_tokens=500    # Increased for more detailed responses
         )
         final_reply = response.choices[0].message.content
 
@@ -311,9 +343,7 @@ Provide a concise, user-friendly answer.
         return final_reply
     except Exception as e:
         logging.error(f"ChatGPT error: {e}")
-        logging.error(f"Client type: {type(client)}")
-        logging.error(f"Environment variables - Endpoint: {AZURE_OPENAI_ENDPOINT}, Key: {'SET' if AZURE_OPENAI_KEY else 'NOT SET'}, Deployment: {AZURE_OPENAI_DEPLOYMENT}")
-        return f"Oops! I couldn't generate a response. Error: {str(e)}"
+        return "I apologize, but I'm having trouble processing your request right now. Please try again or contact our customer support team for immediate assistance."
 
 # -----------------------------
 # Chat endpoint
@@ -344,7 +374,11 @@ async def chat_endpoint(request: ChatRequest):
         combined_context += reply_text
 
     if intent in {"faq", "chatgpt"} or escalated:
-        final_reply = generate_chatgpt_response(user_message, combined_context)
+        # For general questions, don't pass MyPursu context
+        if any(word in user_message.lower() for word in ['mypursu', 'remit', 'bill', 'payment', 'travel', 'mailbox', 'ship', 'withdraw', 'history', 'scan', 'pay', 'upi', 'qr', 'concierge']):
+            final_reply = generate_chatgpt_response(user_message, combined_context)
+        else:
+            final_reply = generate_chatgpt_response(user_message, "")
     else:
         final_reply = reply_text
 
