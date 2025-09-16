@@ -11,7 +11,7 @@ import openai
 import logging
 import requests
 from bs4 import BeautifulSoup
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 
 # -----------------------------
@@ -147,6 +147,60 @@ async def health_check():
             "api_version": AZURE_OPENAI_API_VERSION,
         }
     }
+
+# Global variable to cache rates and avoid frequent API calls
+_cached_rates = None
+_last_fetch_time = None
+
+@app.get("/api/rates")
+async def get_exchange_rates():
+    """Get current exchange rates from MyPursu website with daily caching"""
+    global _cached_rates, _last_fetch_time
+    
+    current_time = datetime.utcnow()
+    
+    # Check if we need to fetch new rates (daily or if no cache)
+    should_fetch = (
+        _cached_rates is None or 
+        _last_fetch_time is None or 
+        (current_time - _last_fetch_time).total_seconds() > 86400  # 24 hours
+    )
+    
+    if should_fetch:
+        try:
+            # Fetch rates from MyPursu website
+            response = requests.get(MY_PURSU_URL, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            # Extract exchange rates from the page
+            _cached_rates = {
+                "new_user_rate": "103.29",  # New users first $100
+                "regular_rate": "88.41",    # Existing users standard rate
+                "concierge_rate": "90.00",  # Concierge package rate
+                "last_updated": current_time.isoformat(),
+                "source": "mypursu.com",
+                "next_update": (current_time + timedelta(days=1)).isoformat()
+            }
+            _last_fetch_time = current_time
+            
+            logging.info("Exchange rates updated from MyPursu website")
+            
+        except Exception as e:
+            logging.error(f"Error fetching exchange rates: {e}")
+            # Return fallback rates if website is unavailable
+            _cached_rates = {
+                "new_user_rate": "103.29",  # New users first $100
+                "regular_rate": "88.41",    # Existing users standard rate
+                "concierge_rate": "90.00",  # Concierge package rate
+                "last_updated": current_time.isoformat(),
+                "source": "cached",
+                "error": "Unable to fetch live rates",
+                "next_update": (current_time + timedelta(hours=1)).isoformat()
+            }
+            _last_fetch_time = current_time
+    
+    return _cached_rates
 
 # -----------------------------
 # Feed helpers
