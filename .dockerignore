@@ -1,3 +1,7 @@
+# Git
+.git
+.gitignore
+
 # Environment files
 .env
 .env.local
@@ -48,9 +52,15 @@ logs/
 *.db
 *.db.bak
 
+# Test files
+tests/
+*_test.py
+test_*.py
+
+# Documentation
+*.md
+docs/
+
 # Backup files
 *.backup
 *.bak
-
-# Sensitive files
-.env.example.backup

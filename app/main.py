@@ -296,22 +296,20 @@ def get_enhanced_response(user_id: str, text: str, enabled_intents: set):
 def generate_chatgpt_response(user_message: str, context: str) -> str:
     try:
         prompt = f"""
-You are Sarathi AI, a helpful and friendly assistant. You can answer any questions - general questions, MyPursu services, or anything else.
+You're Sarathi, a helpful assistant. Give medium-length responses (3-5 lines) that sound natural and human.
 
-CONTEXT INFORMATION:
+CONTEXT:
 {context}
 
-USER QUESTION: "{user_message}"
+QUESTION: "{user_message}"
 
-Please provide a helpful, detailed answer. If the question is about MyPursu services, use the context information to give specific details. If it's a general question (like math, weather, general knowledge), answer it directly and naturally.
-
-Be friendly, informative, and always try to be helpful. Answer questions directly without unnecessary restrictions or apologies.
+Answer in 3-5 lines, casually but informatively. Use the context if it's about MyPursu services. For other questions, give a helpful explanation without being too formal or robotic.
 """
         response = openai.ChatCompletion.create(
             engine=AZURE_OPENAI_DEPLOYMENT,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,  # Lower temperature for more consistent responses
-            max_tokens=500    # Increased for more detailed responses
+            temperature=0.7,  # Higher temperature for more natural responses
+            max_tokens=300    # Medium-length responses (3-5 lines)
         )
         final_reply = response.choices[0].message.content
 
@@ -343,7 +341,7 @@ Be friendly, informative, and always try to be helpful. Answer questions directl
         return final_reply
     except Exception as e:
         logging.error(f"ChatGPT error: {e}")
-        return "I apologize, but I'm having trouble processing your request right now. Please try again or contact our customer support team for immediate assistance."
+        return "Sorry, having some issues right now. Try again in a sec!"
 
 # -----------------------------
 # Chat endpoint

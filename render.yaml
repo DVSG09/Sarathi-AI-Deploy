@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: sarathi-api
+    name: sarathi-ai-chatbot
     env: docker
     dockerfilePath: ./Dockerfile
     plan: free
@@ -12,6 +12,18 @@ services:
       - key: AZURE_OPENAI_API_VERSION
         value: "2025-01-01-preview"
       - key: AZURE_OPENAI_DEPLOYMENT
-        value: "sarathi-deploy"
+        value: "chat-deploy"
+      - key: AZURE_OPENAI_EMBEDDING_DEPLOYMENT
+        value: "embedding-deploy"
+      - key: APP_NAME
+        value: "Sarathi"
+      - key: APP_ENV
+        value: "production"
+      - key: LOG_LEVEL
+        value: "info"
+      - key: ENABLED_INTENTS
+        value: "status,faq,billing,appointment,account"
     healthCheckPath: /health
+    buildCommand: ""
+    startCommand: ""
 
