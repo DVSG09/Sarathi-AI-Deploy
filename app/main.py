@@ -234,48 +234,105 @@ def cleanup_expired_sessions():
     conn.close()
 
 # -----------------------------
-# Predefined MyPursu website
+# MyPursu websites to crawl
 # -----------------------------
-MY_PURSU_URL = "https://mypursu.com/"
+MY_PURSU_URLS = {
+    "main": "https://mypursu.com/",
+    "user_agreement": "https://mypursu.com/mobile-application-user-agreement",
+    "faq": "https://mypursu.com/faq"
+}
 
-def crawl_mypursu_website():
-    try:
-        response = requests.get(MY_PURSU_URL)
-        response.raise_for_status()
-        soup = BeautifulSoup(response.text, "html.parser")
-        for script in soup(["script", "style"]):
-            script.decompose()
-        text = soup.get_text(separator="\n")
-        text = "\n".join(line.strip() for line in text.splitlines() if line.strip())
-
-        now = datetime.utcnow().isoformat()
-        conn = sqlite3.connect(DB_FILE)
-        cursor = conn.cursor()
-        cursor.execute(
-            """
-            INSERT INTO feed_entries 
-            (entry_type, source, title, tags, content, metadata, status, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                "WEB",
-                MY_PURSU_URL,
-                "MyPursu Website",
-                "mypursu,website",
-                text[:4000],
-                json.dumps({"source_type": "web", "added_by": "crawler"}),
-                "active",
-                now,
-                now
+def crawl_mypursu_websites():
+    """Crawl all MyPursu websites and add to knowledge base"""
+    logging.info(f"Starting to crawl {len(MY_PURSU_URLS)} websites: {list(MY_PURSU_URLS.keys())}")
+    
+    for site_name, url in MY_PURSU_URLS.items():
+        try:
+            logging.info(f"Crawling {site_name}: {url}")
+            response = requests.get(url, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, "html.parser")
+            
+            # Remove script and style elements
+            for script in soup(["script", "style"]):
+                script.decompose()
+            
+            # Extract text content
+            text = soup.get_text(separator="\n")
+            text = "\n".join(line.strip() for line in text.splitlines() if line.strip())
+            
+            # Create appropriate title and tags based on site
+            if site_name == "main":
+                title = "MyPursu Main Website"
+                tags = "mypursu,website,main"
+            elif site_name == "user_agreement":
+                title = "MyPursu Mobile Application User Agreement"
+                tags = "mypursu,user-agreement,terms,legal,compliance"
+            elif site_name == "faq":
+                title = "MyPursu Frequently Asked Questions"
+                tags = "mypursu,faq,help,support,questions"
+            
+            logging.info(f"Extracted {len(text)} characters from {site_name}")
+            
+            now = datetime.utcnow().isoformat()
+            conn = sqlite3.connect(DB_FILE)
+            cursor = conn.cursor()
+            
+            # Check if entry already exists to avoid duplicates
+            cursor.execute(
+                "SELECT id FROM feed_entries WHERE source = ? AND entry_type = 'WEB'",
+                (url,)
             )
-        )
-        conn.commit()
-        conn.close()
-        logging.info("✅ MyPursu website content added to feed DB")
-    except Exception as e:
-        logging.error(f"Error crawling website: {e}")
+            existing = cursor.fetchone()
+            
+            if not existing:
+                cursor.execute(
+                    """
+                    INSERT INTO feed_entries 
+                    (entry_type, source, title, tags, content, metadata, status, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        "WEB",
+                        url,
+                        title,
+                        tags,
+                        text[:4000],  # Limit content size
+                        json.dumps({"source_type": "web", "added_by": "crawler", "site_type": site_name}),
+                        "active",
+                        now,
+                        now
+                    )
+                )
+                conn.commit()
+                logging.info(f"✅ {title} content added to feed DB")
+            else:
+                # Update existing entry
+                cursor.execute(
+                    """
+                    UPDATE feed_entries 
+                    SET content = ?, updated_at = ?, metadata = ?
+                    WHERE source = ? AND entry_type = 'WEB'
+                    """,
+                    (
+                        text[:4000],
+                        now,
+                        json.dumps({"source_type": "web", "added_by": "crawler", "site_type": site_name}),
+                        url
+                    )
+                )
+                conn.commit()
+                logging.info(f"✅ {title} content updated in feed DB")
+            
+            conn.close()
+            
+        except Exception as e:
+            logging.error(f"Error crawling {site_name} ({url}): {e}")
+    
+    logging.info("Website crawling completed")
 
-crawl_mypursu_website()
+# Crawl all MyPursu websites
+crawl_mypursu_websites()
 
 # -----------------------------
 # Request models
@@ -389,7 +446,14 @@ def fetch_db_context(user_message: str, max_entries: int = 5) -> str:
         'receive': ['get', 'collect', 'mailbox', 'parcel'],
         'help': ['support', 'assist', 'guide', 'how'],
         'account': ['profile', 'wallet', 'balance', 'kyc'],
-        'app': ['application', 'mobile', 'download', 'install']
+        'app': ['application', 'mobile', 'download', 'install'],
+        'faq': ['frequently', 'asked', 'questions', 'help', 'support'],
+        'agreement': ['terms', 'conditions', 'user', 'agreement', 'legal'],
+        'concierge': ['package', 'premium', 'service', 'luxury'],
+        'remit': ['remit2any', 'remittance', 'transfer', 'send'],
+        'kyc': ['verification', 'identity', 'documents', 'pan', 'aadhaar'],
+        'limit': ['limits', 'transaction', 'daily', 'weekly', 'maximum'],
+        'withdraw': ['withdrawal', 'cash', 'out', 'funds']
     }
     
     # Expand query with synonyms
@@ -743,6 +807,15 @@ async def cleanup_sessions():
         return {"message": "Cleanup completed successfully"}
     except Exception as e:
         return {"error": f"Cleanup failed: {str(e)}"}
+
+@app.post("/crawl-websites")
+async def crawl_websites():
+    """Manually trigger crawling of MyPursu websites"""
+    try:
+        crawl_mypursu_websites()
+        return {"message": "Website crawling completed successfully"}
+    except Exception as e:
+        return {"error": f"Website crawling failed: {str(e)}"}
 
 # -----------------------------
 # ✅ Support endpoint (NEW)
