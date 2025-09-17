@@ -1196,15 +1196,83 @@
       let currentChatMessages = [];
       let filteredChatHistory = [];
       let sidebarCollapsed = true; // Default to collapsed
+      let currentSessionId = null; // Session management
 
       window.onload = () => {
         loadChatHistory();
         loadMediaLibrary();
+        initializeSession();
         startNewChat();
         setupEventListeners();
         initializeSidebarState();
         updateExchangeRates();
       };
+
+      // Session Management Functions
+      async function initializeSession() {
+        try {
+          // Try to get existing session from localStorage
+          currentSessionId = localStorage.getItem('currentSessionId');
+          
+          if (!currentSessionId) {
+            // Create new session
+            const response = await fetch('/session/new');
+            const data = await response.json();
+            currentSessionId = data.session_id;
+            localStorage.setItem('currentSessionId', currentSessionId);
+          }
+          
+          // Load conversation history for this session
+          await loadSessionHistory();
+        } catch (error) {
+          console.error('Error initializing session:', error);
+          // Fallback: create a local session ID
+          currentSessionId = 'local_' + Date.now();
+        }
+      }
+
+      async function loadSessionHistory() {
+        if (!currentSessionId) return;
+        
+        try {
+          const response = await fetch(`/session/${currentSessionId}/history`);
+          const data = await response.json();
+          
+          if (data.history && data.history.length > 0) {
+            // Clear current messages and load session history
+            messagesDiv.innerHTML = '';
+            currentChatMessages = [];
+            
+            data.history.forEach(msg => {
+              const sender = msg.role === 'user' ? 'user' : 'bot';
+              appendMessage(msg.message, sender, false); // false = don't save to current chat
+            });
+          }
+        } catch (error) {
+          console.error('Error loading session history:', error);
+        }
+      }
+
+      async function createNewSession() {
+        try {
+          const response = await fetch('/session/new');
+          const data = await response.json();
+          currentSessionId = data.session_id;
+          localStorage.setItem('currentSessionId', currentSessionId);
+          
+          // Clear current conversation
+          messagesDiv.innerHTML = '';
+          currentChatMessages = [];
+          
+          // Start fresh conversation
+          appendMessage("Hey! 👋 I'm Sarathi. What's up?", "bot", false);
+          
+          return currentSessionId;
+        } catch (error) {
+          console.error('Error creating new session:', error);
+          return null;
+        }
+      }
 
       function initializeSidebarState() {
         // Set initial sidebar state
@@ -1629,14 +1697,14 @@
       setInterval(updateExchangeRates, 1800000);
 
       // New chat button
-      newChatBtn.onclick = () => {
+      newChatBtn.onclick = async () => {
         if (currentChatMessages.length > 0) {
           saveChat();
         }
-        startNewChat();
+        await createNewSession();
       };
 
-      function appendMessage(text, sender) {
+      function appendMessage(text, sender, saveToChat = true) {
         const messageDiv = document.createElement("div");
         messageDiv.className = `message ${sender}`;
         
@@ -1653,16 +1721,18 @@
         messagesDiv.appendChild(messageDiv);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
         
-        // Save message to current chat
-        currentChatMessages.push({
-          text: text,
-          sender: sender,
-          timestamp: Date.now()
-        });
-        
-        // Auto-save chat after user messages
-        if (sender === 'user') {
-          setTimeout(() => saveChat(), 1000);
+        // Save message to current chat (only if saveToChat is true)
+        if (saveToChat) {
+          currentChatMessages.push({
+            text: text,
+            sender: sender,
+            timestamp: Date.now()
+          });
+          
+          // Auto-save chat after user messages
+          if (sender === 'user') {
+            setTimeout(() => saveChat(), 1000);
+          }
         }
       }
 
@@ -1688,12 +1758,21 @@
           const response = await fetch("/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message }),
+            body: JSON.stringify({ 
+              message: message,
+              session_id: currentSessionId 
+            }),
           });
           messagesDiv.removeChild(typingMsg);
           if (response.ok) {
             const data = await response.json();
             appendMessage(data.response || "No response from server", "bot");
+            
+            // Update session ID if returned
+            if (data.session_id) {
+              currentSessionId = data.session_id;
+              localStorage.setItem('currentSessionId', currentSessionId);
+            }
           } else appendMessage("Error: Failed to get response", "bot");
         } catch {
           messagesDiv.removeChild(typingMsg);
@@ -1724,12 +1803,21 @@
           fetch("/chat", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ message: question }),
+            body: JSON.stringify({ 
+              message: question,
+              session_id: currentSessionId 
+            }),
           })
             .then((res) => res.json())
             .then((data) => {
               messagesDiv.removeChild(typingMsg);
               appendMessage(data.response || "No response from server", "bot");
+              
+              // Update session ID if returned
+              if (data.session_id) {
+                currentSessionId = data.session_id;
+                localStorage.setItem('currentSessionId', currentSessionId);
+              }
             })
             .catch(() => {
               messagesDiv.removeChild(typingMsg);
@@ -1754,12 +1842,21 @@
         fetch("/chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: "I need live support" }),
+          body: JSON.stringify({ 
+            message: "I need live support",
+            session_id: currentSessionId 
+          }),
         })
           .then((res) => res.json())
           .then((data) => {
             messagesDiv.removeChild(typingMsg);
             appendMessage(data.response || "No response from server", "bot");
+            
+            // Update session ID if returned
+            if (data.session_id) {
+              currentSessionId = data.session_id;
+              localStorage.setItem('currentSessionId', currentSessionId);
+            }
           })
           .catch(() => {
             messagesDiv.removeChild(typingMsg);

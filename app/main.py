@@ -13,6 +13,7 @@ import requests
 from bs4 import BeautifulSoup
 from datetime import datetime, timedelta
 import json
+import uuid
 
 # -----------------------------
 # Load environment variables
@@ -50,6 +51,18 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # -----------------------------
+# Startup event
+# -----------------------------
+@app.on_event("startup")
+async def startup_event():
+    """Run cleanup on startup"""
+    try:
+        cleanup_expired_sessions()
+        logging.info("✅ Startup cleanup completed")
+    except Exception as e:
+        logging.error(f"Startup cleanup failed: {e}")
+
+# -----------------------------
 # Database setup
 # -----------------------------
 DB_FILE = "sarathi_feed.db"
@@ -57,6 +70,8 @@ DB_FILE = "sarathi_feed.db"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     cursor = conn.cursor()
+    
+    # Feed entries table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS feed_entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -71,10 +86,152 @@ def init_db():
             updated_at TEXT
         )
     """)
+    
+    # Conversation sessions table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS conversation_sessions (
+            id TEXT PRIMARY KEY,
+            user_id TEXT DEFAULT 'anonymous',
+            created_at TEXT,
+            last_activity TEXT,
+            expires_at TEXT,
+            status TEXT DEFAULT 'active'
+        )
+    """)
+    
+    # Conversation messages table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS conversation_messages (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id TEXT,
+            role TEXT,
+            message TEXT,
+            timestamp TEXT,
+            metadata TEXT DEFAULT '{}',
+            FOREIGN KEY (session_id) REFERENCES conversation_sessions (id)
+        )
+    """)
+    
     conn.commit()
     conn.close()
 
 init_db()
+
+# -----------------------------
+# Session Management
+# -----------------------------
+def create_session(user_id: str = "anonymous") -> str:
+    """Create a new conversation session"""
+    session_id = str(uuid.uuid4())
+    now = datetime.utcnow()
+    expires_at = now + timedelta(hours=48)  # 48 hours expiration
+    
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO conversation_sessions (id, user_id, created_at, last_activity, expires_at) VALUES (?, ?, ?, ?, ?)",
+        (session_id, user_id, now.isoformat(), now.isoformat(), expires_at.isoformat())
+    )
+    conn.commit()
+    conn.close()
+    
+    return session_id
+
+def get_or_create_session(session_id: str = None, user_id: str = "anonymous") -> str:
+    """Get existing session or create new one"""
+    if not session_id:
+        return create_session(user_id)
+    
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT id, expires_at FROM conversation_sessions WHERE id = ? AND status = 'active'",
+        (session_id,)
+    )
+    result = cursor.fetchone()
+    conn.close()
+    
+    if result:
+        session_id, expires_at_str = result
+        expires_at = datetime.fromisoformat(expires_at_str)
+        if datetime.utcnow() < expires_at:
+            # Update last activity
+            update_session_activity(session_id)
+            return session_id
+        else:
+            # Session expired, create new one
+            return create_session(user_id)
+    else:
+        # Session not found, create new one
+        return create_session(user_id)
+
+def update_session_activity(session_id: str):
+    """Update last activity timestamp for a session"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "UPDATE conversation_sessions SET last_activity = ? WHERE id = ?",
+        (datetime.utcnow().isoformat(), session_id)
+    )
+    conn.commit()
+    conn.close()
+
+def save_message(session_id: str, role: str, message: str, metadata: dict = None):
+    """Save a message to the conversation history"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "INSERT INTO conversation_messages (session_id, role, message, timestamp, metadata) VALUES (?, ?, ?, ?, ?)",
+        (session_id, role, message, datetime.utcnow().isoformat(), json.dumps(metadata or {}))
+    )
+    conn.commit()
+    conn.close()
+
+def get_conversation_history(session_id: str, limit: int = 10) -> list:
+    """Get recent conversation history for a session"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    cursor.execute(
+        "SELECT role, message, timestamp FROM conversation_messages WHERE session_id = ? ORDER BY timestamp DESC LIMIT ?",
+        (session_id, limit)
+    )
+    messages = cursor.fetchall()
+    conn.close()
+    
+    # Return in chronological order (oldest first)
+    return list(reversed(messages))
+
+def cleanup_expired_sessions():
+    """Clean up expired sessions and their messages"""
+    conn = sqlite3.connect(DB_FILE)
+    cursor = conn.cursor()
+    
+    # Get expired sessions
+    cursor.execute(
+        "SELECT id FROM conversation_sessions WHERE expires_at < ? AND status = 'active'",
+        (datetime.utcnow().isoformat(),)
+    )
+    expired_sessions = cursor.fetchall()
+    
+    if expired_sessions:
+        session_ids = [s[0] for s in expired_sessions]
+        
+        # Delete messages from expired sessions
+        cursor.execute(
+            f"DELETE FROM conversation_messages WHERE session_id IN ({','.join(['?'] * len(session_ids))})",
+            session_ids
+        )
+        
+        # Mark sessions as expired
+        cursor.execute(
+            f"UPDATE conversation_sessions SET status = 'expired' WHERE id IN ({','.join(['?'] * len(session_ids))})",
+            session_ids
+        )
+        
+        logging.info(f"Cleaned up {len(session_ids)} expired sessions")
+    
+    conn.commit()
+    conn.close()
 
 # -----------------------------
 # Predefined MyPursu website
@@ -125,9 +282,11 @@ crawl_mypursu_website()
 # -----------------------------
 class ChatRequest(BaseModel):
     message: str
+    session_id: str = None
 
 class ServiceRequest(BaseModel):
     service: str
+    session_id: str = None
 
 # -----------------------------
 # Serve index.html
@@ -347,17 +506,23 @@ def get_enhanced_response(user_id: str, text: str, enabled_intents: set):
 # -----------------------------
 # ChatGPT restricted to MyPursu
 # -----------------------------
-def generate_chatgpt_response(user_message: str, context: str) -> str:
+def generate_chatgpt_response(user_message: str, context: str, conversation_history: list = None) -> str:
     try:
+        # Build conversation context
+        conversation_context = ""
+        if conversation_history:
+            conversation_context = "\n".join([f"{role}: {message}" for role, message, _ in conversation_history[-5:]])  # Last 5 messages
+            conversation_context = f"\n\nRECENT CONVERSATION:\n{conversation_context}\n"
+        
         prompt = f"""
 You're Sarathi, a helpful assistant. Give medium-length responses (3-5 lines) that sound natural and human.
 
 CONTEXT:
-{context}
+{context}{conversation_context}
 
-QUESTION: "{user_message}"
+CURRENT QUESTION: "{user_message}"
 
-Answer in 3-5 lines, casually but informatively. Use the context if it's about MyPursu services. For other questions, give a helpful explanation without being too formal or robotic.
+Answer in 3-5 lines, casually but informatively. Use the context if it's about MyPursu services. For other questions, give a helpful explanation without being too formal or robotic. If there's conversation history, reference it naturally when relevant.
 """
         response = openai.ChatCompletion.create(
             engine=AZURE_OPENAI_DEPLOYMENT,
@@ -404,7 +569,16 @@ Answer in 3-5 lines, casually but informatively. Use the context if it's about M
 async def chat_endpoint(request: ChatRequest):
     user_message = (request.message or "").strip()
     if not user_message:
-        return {"response": "Please enter a message.", "intent": "none"}
+        return {"response": "Please enter a message.", "intent": "none", "session_id": None}
+
+    # Get or create session
+    session_id = get_or_create_session(request.session_id)
+    
+    # Get conversation history
+    conversation_history = get_conversation_history(session_id, limit=10)
+    
+    # Save user message
+    save_message(session_id, "user", user_message)
 
     db_context = fetch_db_context(user_message)
     feed_context = build_feed_context(user_message)
@@ -428,18 +602,22 @@ async def chat_endpoint(request: ChatRequest):
     if intent in {"faq", "chatgpt"} or escalated:
         # For general questions, don't pass MyPursu context
         if any(word in user_message.lower() for word in ['mypursu', 'remit', 'bill', 'payment', 'travel', 'mailbox', 'ship', 'withdraw', 'history', 'scan', 'pay', 'upi', 'qr', 'concierge']):
-            final_reply = generate_chatgpt_response(user_message, combined_context)
+            final_reply = generate_chatgpt_response(user_message, combined_context, conversation_history)
         else:
-            final_reply = generate_chatgpt_response(user_message, "")
+            final_reply = generate_chatgpt_response(user_message, "", conversation_history)
     else:
         final_reply = reply_text
+
+    # Save assistant response
+    save_message(session_id, "assistant", final_reply, metadata)
 
     return {
         "response": final_reply,
         "intent": intent,
         "tool_calls": tool_calls,
         "escalated": escalated,
-        "metadata": metadata
+        "metadata": metadata,
+        "session_id": session_id
     }
 
 # -----------------------------
@@ -449,7 +627,16 @@ async def chat_endpoint(request: ChatRequest):
 async def service_endpoint(request: ServiceRequest):
     service = (request.service or "").strip()
     if not service:
-        return {"response": "Please select a service."}
+        return {"response": "Please select a service.", "session_id": None}
+
+    # Get or create session
+    session_id = get_or_create_session(request.session_id)
+    
+    # Get conversation history
+    conversation_history = get_conversation_history(session_id, limit=10)
+    
+    # Save user service request
+    save_message(session_id, "user", f"Tell me about the {service} service.")
 
     db_context = fetch_db_context(service)
     feed_context = build_feed_context(service)
@@ -460,14 +647,18 @@ async def service_endpoint(request: ServiceRequest):
     if feed_context:
         combined_context += f"{feed_context}\n\n"
 
-    final_reply = generate_chatgpt_response(f"Tell me about the {service} service.", combined_context)
+    final_reply = generate_chatgpt_response(f"Tell me about the {service} service.", combined_context, conversation_history)
+    
+    # Save assistant response
+    save_message(session_id, "assistant", final_reply)
 
     return {
         "response": final_reply,
         "intent": "service_info",
         "tool_calls": [],
         "escalated": False,
-        "metadata": {}
+        "metadata": {},
+        "session_id": session_id
     }
 
 # -----------------------------
@@ -502,6 +693,56 @@ async def delete_feed(id: int):
     conn.commit()
     conn.close()
     return {"status": "success"}
+
+# -----------------------------
+# Session Management endpoints
+# -----------------------------
+@app.get("/session/new")
+async def create_new_session():
+    """Create a new conversation session"""
+    session_id = create_session()
+    return {"session_id": session_id, "message": "New session created"}
+
+@app.get("/session/{session_id}/history")
+async def get_session_history(session_id: str):
+    """Get conversation history for a session"""
+    try:
+        history = get_conversation_history(session_id, limit=20)
+        return {
+            "session_id": session_id,
+            "history": [{"role": role, "message": message, "timestamp": timestamp} for role, message, timestamp in history]
+        }
+    except Exception as e:
+        return {"error": f"Failed to get history: {str(e)}"}
+
+@app.delete("/session/{session_id}")
+async def delete_session(session_id: str):
+    """Delete a conversation session and its messages"""
+    try:
+        conn = sqlite3.connect(DB_FILE)
+        cursor = conn.cursor()
+        
+        # Delete messages
+        cursor.execute("DELETE FROM conversation_messages WHERE session_id = ?", (session_id,))
+        
+        # Delete session
+        cursor.execute("DELETE FROM conversation_sessions WHERE id = ?", (session_id,))
+        
+        conn.commit()
+        conn.close()
+        
+        return {"message": "Session deleted successfully"}
+    except Exception as e:
+        return {"error": f"Failed to delete session: {str(e)}"}
+
+@app.post("/cleanup")
+async def cleanup_sessions():
+    """Manually trigger cleanup of expired sessions"""
+    try:
+        cleanup_expired_sessions()
+        return {"message": "Cleanup completed successfully"}
+    except Exception as e:
+        return {"error": f"Cleanup failed: {str(e)}"}
 
 # -----------------------------
 # ✅ Support endpoint (NEW)
