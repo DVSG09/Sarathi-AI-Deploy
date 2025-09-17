@@ -143,64 +143,171 @@
         gap: 12px;
       }
 
-       .exchange-rates-header {
-         background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
-         color: #1e293b;
-         padding: 8px 10px;
-         border-radius: 8px;
-         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-         width: 160px;
-         position: absolute;
-         top: 70px;
-         right: 20px;
-         z-index: 1001;
-         backdrop-filter: blur(10px);
-         border: 1px solid #e0f2fe;
-       }
+      .offer-container {
+        position: relative;
+        display: inline-block;
+      }
 
-      .rate-item-header {
+      .offer-wrapper {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        position: relative;
+      }
+
+      .offer-btn {
+        width: 40px;
+        height: 40px;
+        border: none;
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+        transition: all 0.3s ease;
+        position: relative;
+        z-index: 1001;
+      }
+
+      .offer-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 6px 16px rgba(251, 191, 36, 0.4);
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      }
+
+      .offer-btn:active {
+        transform: scale(0.95);
+      }
+
+      .offer-tag {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 2px 6px;
+        border-radius: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+        animation: pulse 2s infinite;
+        position: relative;
+        z-index: 1001;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      .offer-popup {
+        position: absolute;
+        top: 50px;
+        right: 0;
+        background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
+        color: #1e293b;
+        padding: 16px;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        width: 200px;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(-10px);
+        transition: all 0.3s ease;
+        z-index: 1002;
+        border: 1px solid #e0f2fe;
+      }
+
+      .offer-popup.show {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+
+      .offer-header {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 6px;
-        padding: 2px 0;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid rgba(30, 41, 59, 0.1);
       }
 
-      .rate-item-header:last-of-type {
-        margin-bottom: 4px;
+      .offer-header h3 {
+        font-size: 14px;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 0;
       }
 
-       .rate-label-header {
-         font-size: 11px;
-         color: #475569;
-         font-weight: 500;
-         flex: 1;
-       }
+      .close-offer-btn {
+        width: 20px;
+        height: 20px;
+        border: none;
+        background: none;
+        cursor: pointer;
+        font-size: 16px;
+        color: #64748b;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+      }
 
-       .rate-value-header {
-         font-size: 12px;
-         color: #1e293b;
-         font-weight: 700;
-         background: rgba(255, 255, 255, 0.9);
-         padding: 2px 5px;
-         border-radius: 4px;
-         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-         margin-left: 4px;
-         border: 1px solid #e2e8f0;
-       }
+      .close-offer-btn:hover {
+        background: rgba(100, 116, 139, 0.1);
+        color: #1e293b;
+      }
 
-      .rate-update-time {
+      .offer-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+        padding: 4px 0;
+      }
+
+      .offer-label {
+        font-size: 12px;
+        color: #475569;
+        font-weight: 500;
+        flex: 1;
+      }
+
+      .offer-rate {
+        font-size: 13px;
+        color: #1e293b;
+        font-weight: 700;
+        background: rgba(255, 255, 255, 0.9);
+        padding: 3px 6px;
+        border-radius: 4px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-left: 8px;
+        border: 1px solid #e2e8f0;
+      }
+
+      .offer-footer {
         text-align: center;
-        margin-top: 4px;
-        padding-top: 4px;
+        margin-top: 8px;
+        padding-top: 8px;
         border-top: 1px solid rgba(30, 41, 59, 0.1);
       }
 
-       .rate-update-time small {
-         color: #64748b;
-         font-size: 9px;
-         font-weight: 400;
-       }
+      .offer-footer small {
+        color: #64748b;
+        font-size: 10px;
+        font-weight: 400;
+      }
       
       .header-btn {
         width: 32px;
@@ -998,21 +1105,35 @@
         </div>
       </div>
       <div class="header-right">
-        <div class="exchange-rates-header">
-          <div class="rate-item-header">
-            <div class="rate-label-header">New Users:</div>
-            <div class="rate-value-header" id="header-rate-new">₹103.29</div>
+        <div class="offer-container">
+          <div class="offer-wrapper">
+            <button class="offer-btn" id="offer-btn" title="Special Offers">
+              🎁
+            </button>
+            <span class="offer-tag">OFFER</span>
           </div>
-          <div class="rate-item-header">
-            <div class="rate-label-header">Existing Users:</div>
-            <div class="rate-value-header" id="header-rate-existing">₹88.41</div>
-          </div>
-          <div class="rate-item-header">
-            <div class="rate-label-header">Concierge:</div>
-            <div class="rate-value-header" id="header-rate-concierge">₹90.00</div>
-          </div>
-          <div class="rate-update-time">
-            <small id="header-timestamp">Updated: Just now</small>
+          <div class="offer-popup" id="offer-popup">
+            <div class="offer-header">
+              <h3>🎉 Special Exchange Rate Offers!</h3>
+              <button class="close-offer-btn" id="close-offer-btn">×</button>
+            </div>
+            <div class="offer-content">
+              <div class="offer-item">
+                <div class="offer-label">New Users (First $100):</div>
+                <div class="offer-rate" id="popup-rate-new">₹103.29</div>
+              </div>
+              <div class="offer-item">
+                <div class="offer-label">Existing Users:</div>
+                <div class="offer-rate" id="popup-rate-existing">₹88.41</div>
+              </div>
+              <div class="offer-item">
+                <div class="offer-label">Concierge Package:</div>
+                <div class="offer-rate" id="popup-rate-concierge">₹90.00</div>
+              </div>
+              <div class="offer-footer">
+                <small id="popup-timestamp">Updated: Just now</small>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -1188,6 +1309,9 @@
       const sidebar = document.getElementById("sidebar");
       const sidebarToggle = document.getElementById("sidebar-toggle");
       const mainContent = document.querySelector(".main-content");
+      const offerBtn = document.getElementById("offer-btn");
+      const offerPopup = document.getElementById("offer-popup");
+      const closeOfferBtn = document.getElementById("close-offer-btn");
 
       // Chat history management
       let chatHistory = JSON.parse(localStorage.getItem('chatHistory') || '[]');
@@ -1374,6 +1498,24 @@
 
         // Collapsible sections functionality
         setupCollapsibleSections();
+
+        // Offer button functionality
+        offerBtn.onclick = (e) => {
+          e.stopPropagation();
+          offerPopup.classList.toggle('show');
+        };
+
+        closeOfferBtn.onclick = (e) => {
+          e.stopPropagation();
+          offerPopup.classList.remove('show');
+        };
+
+        // Close offer popup when clicking outside
+        document.addEventListener('click', (e) => {
+          if (!offerBtn.contains(e.target) && !offerPopup.contains(e.target)) {
+            offerPopup.classList.remove('show');
+          }
+        });
       }
 
       function setupCollapsibleSections() {
@@ -1661,31 +1803,31 @@
             rateItems[2].querySelector('.rate-value').textContent = `$1 = ₹${rates.concierge_rate}`;
           }
           
-          // Update header exchange rates
-          const headerRateNew = document.getElementById('header-rate-new');
-          const headerRateExisting = document.getElementById('header-rate-existing');
-          const headerRateConcierge = document.getElementById('header-rate-concierge');
+          // Update popup exchange rates
+          const popupRateNew = document.getElementById('popup-rate-new');
+          const popupRateExisting = document.getElementById('popup-rate-existing');
+          const popupRateConcierge = document.getElementById('popup-rate-concierge');
           
-          if (headerRateNew) {
-            headerRateNew.textContent = `₹${rates.new_user_rate}`;
+          if (popupRateNew) {
+            popupRateNew.textContent = `₹${rates.new_user_rate}`;
           }
-          if (headerRateExisting) {
-            headerRateExisting.textContent = `₹${rates.regular_rate}`;
+          if (popupRateExisting) {
+            popupRateExisting.textContent = `₹${rates.regular_rate}`;
           }
-          if (headerRateConcierge) {
-            headerRateConcierge.textContent = `₹${rates.concierge_rate}`;
+          if (popupRateConcierge) {
+            popupRateConcierge.textContent = `₹${rates.concierge_rate}`;
           }
           
           // Update timestamps
           const timestampElement = document.getElementById('rate-timestamp');
-          const headerTimestamp = document.getElementById('header-timestamp');
+          const popupTimestamp = document.getElementById('popup-timestamp');
           const updateTime = new Date(rates.last_updated).toLocaleTimeString();
           
           if (timestampElement) {
             timestampElement.textContent = updateTime;
           }
-          if (headerTimestamp) {
-            headerTimestamp.textContent = `Updated: ${updateTime}`;
+          if (popupTimestamp) {
+            popupTimestamp.textContent = `Updated: ${updateTime}`;
           }
         } catch (error) {
           console.error('Error fetching exchange rates:', error);
