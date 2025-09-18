@@ -795,9 +795,9 @@
          display: flex;
          flex-direction: column;
          background: #ffffff;
-         margin: 20px 20px 20px 20px;
-         max-width: none;
-         width: calc(100% - 40px);
+        margin: 10px 10px 10px 10px;
+        max-width: none;
+        width: calc(100% - 20px);
          border-radius: 16px;
          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
          overflow: hidden;
@@ -805,11 +805,11 @@
          position: relative;
        }
        
-       .main-content.sidebar-open .chat-container {
-         max-width: none;
-         margin-left: 20px;
-         width: calc(100% - 40px);
-       }
+      .main-content.sidebar-open .chat-container {
+        max-width: none;
+        margin-left: 10px;
+        width: calc(100% - 20px);
+      }
       
       .chat-container::before {
         content: '';
@@ -908,6 +908,7 @@
         flex-wrap: wrap;
         gap: 8px;
         margin-top: 16px;
+        padding: 0 20px 20px 20px;
       }
       
       .quick-action {
@@ -925,9 +926,107 @@
         background: #f1f5f9;
         color: #1e293b;
       }
+
+      /* Welcome Screen Styles */
+      .welcome-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        padding: 40px 20px;
+        text-align: center;
+        margin-top: -60px; /* Offset for header space */
+        position: relative;
+      }
+
+      .welcome-header h1 {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: #1a202c;
+        margin-bottom: 16px;
+        line-height: 1.2;
+      }
+
+      .welcome-header p {
+        font-size: 1.1rem;
+        color: #4a5568;
+        margin-bottom: 40px;
+        max-width: 600px;
+        line-height: 1.5;
+      }
+
+      .welcome-input-container {
+        width: 100%;
+        max-width: 600px;
+        margin-bottom: 30px;
+      }
+
+      .welcome-input-wrapper {
+        position: relative;
+        display: flex;
+        align-items: center;
+        background: #f7fafc;
+        border: 2px solid transparent;
+        border-radius: 12px;
+        padding: 4px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+      }
+
+      .welcome-input-wrapper:focus-within {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .welcome-input {
+        flex: 1;
+        border: none;
+        background: transparent;
+        padding: 16px 20px;
+        font-size: 1rem;
+        color: #2d3748;
+        outline: none;
+        border-radius: 8px;
+      }
+
+      .welcome-input::placeholder {
+        color: #a0aec0;
+      }
+
+      .welcome-send-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 8px;
+        padding: 12px;
+        color: white;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-left: 8px;
+      }
+
+      .welcome-send-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+      }
+
+      .welcome-send-btn:active {
+        transform: translateY(0);
+      }
+
+      .welcome-quick-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-top: 20px;
+        justify-content: center;
+      }
       
       .input-container {
-        padding: 20px 24px;
+        padding: 20px 60px;
         border-top: 1px solid #e2e8f0;
         background: #ffffff;
       }
@@ -935,11 +1034,11 @@
       .input-wrapper {
         display: flex;
         align-items: center;
-        gap: 8px;
+        gap: 20px;
         background: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 24px;
-        padding: 8px 16px;
+        padding: 20px 48px;
       }
 
       .input-btn {
@@ -1028,9 +1127,10 @@
         border: none;
         background: none;
         outline: none;
-        font-size: 14px;
+        font-size: 16px;
         color: #1e293b;
-        padding: 8px 0;
+        padding: 20px 0;
+        min-width: 0;
       }
       
       .message-input::placeholder {
@@ -1277,12 +1377,13 @@
                 ➤
               </button>
             </div>
-            <div class="quick-actions">
-              <button class="quick-action">What is Remit2Any?</button>
-              <button class="quick-action">How to pay via UPI</button>
-              <button class="quick-action">Show concierge packages</button>
-              <button class="quick-action">Track my transfer</button>
-            </div>
+          </div>
+          
+          <div class="quick-actions">
+            <button class="quick-action">What is Remit2Any?</button>
+            <button class="quick-action">How to pay via UPI</button>
+            <button class="quick-action">Show concierge packages</button>
+            <button class="quick-action">Track my transfer</button>
           </div>
         </div>
       </div>
@@ -1326,11 +1427,28 @@
         loadChatHistory();
         loadMediaLibrary();
         initializeSession();
-        startNewChat();
+        // Show normal chat interface by default instead of welcome screen
+        showNormalChatInterface();
         setupEventListeners();
         initializeSidebarState();
         updateExchangeRates();
       };
+
+      // Show normal chat interface (not welcome screen)
+      function showNormalChatInterface() {
+        const chatHeader = document.querySelector('.chat-header');
+        const inputContainer = document.querySelector('.input-container');
+        const quickActions = document.querySelector('.quick-actions');
+        const welcomeContainer = document.querySelector('.welcome-container');
+        
+        // Show normal chat elements
+        if (chatHeader) chatHeader.style.display = 'block';
+        if (inputContainer) inputContainer.style.display = 'flex';
+        if (quickActions) quickActions.style.display = 'flex';
+        
+        // Hide welcome screen if it exists
+        if (welcomeContainer) welcomeContainer.style.display = 'none';
+      }
 
       // Session Management Functions
       async function initializeSession() {
@@ -1388,14 +1506,175 @@
           messagesDiv.innerHTML = '';
           currentChatMessages = [];
           
-          // Start fresh conversation
-          appendMessage("Hey! 👋 I'm Sarathi. What's up?", "bot", false);
+          // Show welcome screen with clean layout
+          showWelcomeScreen();
           
           return currentSessionId;
         } catch (error) {
           console.error('Error creating new session:', error);
           return null;
         }
+      }
+
+      function showWelcomeScreen() {
+        // Clear messages and show welcome content
+        messagesDiv.innerHTML = '';
+        
+        // Hide the chat header
+        const chatHeader = document.querySelector('.chat-header');
+        if (chatHeader) {
+          chatHeader.style.display = 'none';
+        }
+        
+        // Create welcome container
+        const welcomeContainer = document.createElement('div');
+        welcomeContainer.className = 'welcome-container';
+        welcomeContainer.innerHTML = `
+          <div class="welcome-header">
+            <h1>Sarathi AI</h1>
+            <p>Your smart companion on the MyPursu journey.</p>
+          </div>
+          <div class="welcome-input-container">
+            <div class="welcome-input-wrapper">
+              <input type="text" id="welcome-input" placeholder="Ask your question here (min 3 words)" class="welcome-input">
+              <button id="welcome-send-btn" class="welcome-send-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="22" y1="2" x2="11" y2="13"></line>
+                  <polygon points="22,2 15,22 11,13 2,9"></polygon>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="welcome-quick-actions">
+            <button class="quick-action">What is Remit2Any?</button>
+            <button class="quick-action">How to pay via UPI</button>
+            <button class="quick-action">Show concierge packages</button>
+            <button class="quick-action">Track my transfer</button>
+          </div>
+        `;
+        
+        messagesDiv.appendChild(welcomeContainer);
+        
+        // Expand the screen by collapsing the sidebar
+        sidebarCollapsed = true;
+        sidebar.classList.add('collapsed');
+        mainContent.classList.remove('sidebar-open');
+        sidebarToggle.textContent = '☰';
+        sidebarToggle.style.left = '20px';
+        
+        // Hide the normal chat input container
+        const inputContainer = document.querySelector('.input-container');
+        if (inputContainer) {
+          inputContainer.style.display = 'none';
+        }
+        
+        // Hide the original quick action buttons at the bottom
+        const quickActions = document.querySelector('.quick-actions');
+        if (quickActions) {
+          quickActions.style.display = 'none';
+        }
+        
+        // Add event listeners for welcome screen
+        setupWelcomeScreenEvents();
+      }
+
+      function setupWelcomeScreenEvents() {
+        const welcomeInput = document.getElementById('welcome-input');
+        const welcomeSendBtn = document.getElementById('welcome-send-btn');
+        
+        if (welcomeInput && welcomeSendBtn) {
+          // Send button click
+          welcomeSendBtn.onclick = () => {
+            const message = welcomeInput.value.trim();
+            if (message.length >= 3) {
+              transitionToNormalChat(message);
+            }
+          };
+          
+          // Enter key press
+          welcomeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              const message = welcomeInput.value.trim();
+              if (message.length >= 3) {
+                transitionToNormalChat(message);
+              }
+            }
+          });
+        }
+        
+        // Re-attach quick action button events for welcome screen
+        const quickActionButtons = document.querySelectorAll('.welcome-quick-actions .quick-action');
+        quickActionButtons.forEach(button => {
+          button.addEventListener('click', function() {
+            const question = button.textContent.trim();
+            transitionToNormalChat(question);
+          });
+        });
+      }
+
+      function transitionToNormalChat(message) {
+        // Clear welcome screen
+        messagesDiv.innerHTML = '';
+        
+        // Show the chat header again
+        const chatHeader = document.querySelector('.chat-header');
+        if (chatHeader) {
+          chatHeader.style.display = 'block';
+        }
+        
+        // Show normal chat input container
+        const inputContainer = document.querySelector('.input-container');
+        if (inputContainer) {
+          inputContainer.style.display = 'flex';
+        }
+        
+        // Show quick actions section again
+        const quickActions = document.querySelector('.quick-actions');
+        if (quickActions) {
+          quickActions.style.display = 'flex';
+        }
+        
+        // Add the user message
+        appendMessage(message, "user");
+        
+        // Show typing indicator and get response
+        const typingMsg = document.createElement("div");
+        typingMsg.className = "message bot";
+        typingMsg.innerHTML = `
+          <div class="message-avatar">S</div>
+          <div class="message-content">🤖 Sarathi is typing...</div>
+        `;
+        messagesDiv.appendChild(typingMsg);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        // Send message to backend
+        fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            message: message,
+            session_id: currentSessionId 
+          }),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            // Remove typing indicator
+            typingMsg.remove();
+            
+            // Add bot response
+            appendMessage(data.response, "bot");
+            
+            // Update session ID if provided
+            if (data.session_id) {
+              currentSessionId = data.session_id;
+              localStorage.setItem('currentSessionId', currentSessionId);
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            typingMsg.remove();
+            appendMessage("Sorry, I'm having trouble right now. Please try again.", "bot");
+          });
       }
 
       function initializeSidebarState() {
@@ -1660,10 +1939,8 @@
         currentChatMessages = [];
         messagesDiv.innerHTML = '';
         
-        appendMessage(
-          "Hey! 👋 I'm Sarathi. What's up?",
-          "bot"
-        );
+        // Show welcome screen with clean layout
+        showWelcomeScreen();
       }
 
       function loadChatHistory() {
@@ -1702,19 +1979,25 @@
         });
       }
 
-      function loadChat(chatId) {
+      async function loadChat(chatId) {
         const chat = chatHistory.find(c => c.id === chatId);
         if (!chat) return;
         
         currentChatId = chatId;
         currentChatMessages = chat.messages;
         
+        // Set the session ID from the chat
+        if (chat.sessionId) {
+          currentSessionId = chat.sessionId;
+          localStorage.setItem('currentSessionId', currentSessionId);
+        }
+        
         // Clear current messages
         messagesDiv.innerHTML = '';
         
         // Load chat messages
         chat.messages.forEach(msg => {
-          appendMessage(msg.text, msg.sender);
+          appendMessage(msg.text, msg.sender, false); // false = don't save to current chat
         });
         
         // Update active state
@@ -1722,6 +2005,22 @@
           item.classList.remove('active');
         });
         document.querySelector(`[data-chat-id="${chatId}"]`).classList.add('active');
+        
+        // Show normal chat interface (not welcome screen)
+        const chatHeader = document.querySelector('.chat-header');
+        if (chatHeader) {
+          chatHeader.style.display = 'block';
+        }
+        
+        const inputContainer = document.querySelector('.input-container');
+        if (inputContainer) {
+          inputContainer.style.display = 'flex';
+        }
+        
+        const quickActions = document.querySelector('.quick-actions');
+        if (quickActions) {
+          quickActions.style.display = 'flex';
+        }
       }
 
       function saveChat() {
@@ -1738,7 +2037,8 @@
           id: currentChatId,
           title: title,
           timestamp: Date.now(),
-          messages: currentChatMessages
+          messages: currentChatMessages,
+          sessionId: currentSessionId
         };
         
         // Remove existing chat with same ID
@@ -1856,7 +2156,7 @@
         
         const content = document.createElement("div");
         content.className = "message-content";
-        content.textContent = text;
+        content.innerHTML = text.replace(/\n/g, '<br>');
         
         messageDiv.appendChild(avatar);
         messageDiv.appendChild(content);
