@@ -385,7 +385,7 @@ async def get_exchange_rates():
     if should_fetch:
         try:
             # Fetch rates from MyPursu website
-            response = requests.get(MY_PURSU_URL, timeout=10)
+            response = requests.get(MY_PURSU_URLS["main"], timeout=10)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, "html.parser")
             
@@ -579,20 +579,65 @@ def generate_chatgpt_response(user_message: str, context: str, conversation_hist
             conversation_context = f"\n\nRECENT CONVERSATION:\n{conversation_context}\n"
         
         prompt = f"""
-You're Sarathi, a helpful assistant. Give medium-length responses (3-5 lines) that sound natural and human.
+You are Sarathi, an expert MyPursu assistant specializing in comprehensive financial and lifestyle services for NRIs and international users. You provide detailed, accurate, and professional responses about MyPursu's complete service ecosystem.
 
-CONTEXT:
+IMPORTANT: Use natural paragraph format with flowing text. Do NOT use bullet points unless the user specifically requests them with words like "bullet points", "list", "each line", or "separate line".
+
+CONTEXT AND KNOWLEDGE BASE:
 {context}{conversation_context}
 
-CURRENT QUESTION: "{user_message}"
+USER QUERY: "{user_message}"
 
-Answer in 3-5 lines, casually but informatively. Use the context if it's about MyPursu services. For other questions, give a helpful explanation without being too formal or robotic. If there's conversation history, reference it naturally when relevant.
+RESPONSE GUIDELINES:
+1. **Formatting**: 
+   - DEFAULT: Use natural paragraph format with flowing text
+   - ONLY use bullet points when user specifically requests: "bullet points", "in bullet points", "each line", "separate line", "line by line", or "list"
+   - When bullet points are requested, format each bullet point on a NEW LINE with proper line breaks
+   - Use proper bullet formatting: "- " followed by content, then press ENTER for next line
+   - NEVER put multiple bullet points on the same line
+2. **Depth**: Provide comprehensive, detailed responses (4-6 lines minimum) with specific information
+3. **Accuracy**: Use only verified MyPursu service information from the context
+4. **Professionalism**: Maintain a helpful, knowledgeable, and professional tone
+5. **Specificity**: Include exact service names, features, and benefits
+6. **Actionability**: Provide clear, actionable information users can follow
+
+MY PURSU EXPERTISE AREAS:
+- Remit2Any: International money transfers with competitive exchange rates
+- Bill Payments: Utility bills, electricity, water, gas, mobile recharges
+- Travel Bookings: Flight reservations, hotel bookings, travel packages
+- Concierge Package: Premium NRI services, personal assistance, exclusive benefits
+- Mail Box: Virtual mailing address, package management, mail forwarding
+- Pack N Ship: Domestic and international shipping solutions
+- Payment Services: UPI payments, QR code payments, merchant payments
+- Withdrawal Services: Cash withdrawal, ATM services
+- Transaction History: Complete financial tracking and records
+
+RESPONSE STYLE:
+- Be comprehensive and informative
+- Use specific MyPursu terminology and service names
+- Provide practical, actionable advice
+- Maintain professional yet approachable tone
+- Focus on user benefits and value propositions
+- Never mention technical implementation details unless asked
+- Use natural paragraph format with flowing text (NO bullet points unless specifically requested)
+
+CRITICAL FORMATTING RULES:
+- DEFAULT RESPONSE: Use natural paragraph format with flowing text (NO bullet points)
+- ONLY use bullet points when user specifically requests: "bullet points", "each line", "separate line", "line by line", or "list"
+- When bullet points are requested, put each bullet point on a NEW LINE
+- Example CORRECT bullet format:
+  - First bullet point
+  - Second bullet point  
+  - Third bullet point
+- Example WRONG bullet format: - First bullet - Second bullet - Third bullet
+- ALWAYS use line breaks between bullet points when formatting is requested
+- Understand basic English requests for formatting
 """
         response = openai.ChatCompletion.create(
             engine=AZURE_OPENAI_DEPLOYMENT,
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,  # Higher temperature for more natural responses
-            max_tokens=300    # Medium-length responses (3-5 lines)
+            max_tokens=500    # Comprehensive responses (4-6 lines)
         )
         final_reply = response.choices[0].message.content
 
@@ -655,7 +700,84 @@ async def chat_endpoint(request: ChatRequest):
                          "History","Remit2Any"}
     )
 
-    combined_context = ""
+    # Add comprehensive MyPursu service information
+    mypursu_services = """
+COMPREHENSIVE MY PURSU SERVICE ECOSYSTEM:
+
+🏦 REMIT2ANY - International Money Transfers:
+- Bank-to-bank transfers from 50+ countries to India
+- Competitive exchange rates (New Users: ₹103.29, Existing: ₹88.41, Concierge: ₹90.00)
+- Secure, fast, and reliable transfers
+- No bank account linking required
+- Mobile number-based wallet system
+
+💳 BILL PAYMENTS:
+- Utility bills: Electricity, water, gas, internet
+- Mobile recharges and postpaid bills
+- Insurance premiums and loan payments
+- Government services and taxes
+- Real-time payment processing
+
+✈️ TRAVEL BOOKINGS:
+- Flight reservations to/from India
+- Hotel bookings across India
+- Travel packages and itineraries
+- Airport transfers and local transport
+- Travel insurance and documentation
+
+👑 CONCIERGE PACKAGE - Premium NRI Services:
+- Personal assistance for complex tasks
+- Exclusive exchange rates and benefits
+- Priority customer support
+- Customized service solutions
+- VIP treatment and dedicated support
+
+📮 MAIL BOX - Virtual Mailing Address:
+- Personal mailing address in India
+- Package reception and management
+- Mail forwarding services
+- Document handling and storage
+- Secure package delivery
+
+📦 PACK N SHIP - Shipping Solutions:
+- Domestic shipping within India
+- International shipping worldwide
+- Package consolidation services
+- Express and standard delivery options
+- Tracking and insurance services
+
+💱 PAYMENT SERVICES:
+- Scan & Pay: QR code payments at merchants
+- Pay to UPI: Direct UPI transfers
+- Pay to Static QR: Static QR code payments
+- Merchant payments and business transactions
+- Digital wallet functionality
+
+🏧 WITHDRAWAL SERVICES:
+- Cash withdrawal from ATMs
+- Bank account transfers
+- Wallet-to-bank transfers
+- International withdrawal options
+- Secure transaction processing
+
+📊 TRANSACTION HISTORY:
+- Complete financial transaction records
+- Detailed payment history
+- Export and download capabilities
+- Real-time transaction tracking
+- Comprehensive reporting features
+
+🎯 KEY BENEFITS:
+- No bank account linking required
+- Mobile number-based registration
+- Secure and encrypted transactions
+- 24/7 customer support
+- Multi-currency support
+- Competitive exchange rates
+- Fast and reliable service
+"""
+    
+    combined_context = mypursu_services + "\n"
     if db_context:
         combined_context += f"{db_context}\n\n"
     if feed_context:
@@ -664,11 +786,8 @@ async def chat_endpoint(request: ChatRequest):
         combined_context += reply_text
 
     if intent in {"faq", "chatgpt"} or escalated:
-        # For general questions, don't pass MyPursu context
-        if any(word in user_message.lower() for word in ['mypursu', 'remit', 'bill', 'payment', 'travel', 'mailbox', 'ship', 'withdraw', 'history', 'scan', 'pay', 'upi', 'qr', 'concierge']):
-            final_reply = generate_chatgpt_response(user_message, combined_context, conversation_history)
-        else:
-            final_reply = generate_chatgpt_response(user_message, "", conversation_history)
+        # Always provide MyPursu context for better responses
+        final_reply = generate_chatgpt_response(user_message, combined_context, conversation_history)
     else:
         final_reply = reply_text
 
