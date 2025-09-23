@@ -44,9 +44,16 @@ Thumbs.db
 *.log
 logs/
 
-# Database
+# Database files
 *.db
 *.db.bak
+sarathi_feed.db
+sarathi_feed.db.bak
+
+# Chat history and user data
+chat_history/
+user_sessions/
+*.session
 
 # Backup files
 *.backup
