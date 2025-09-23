@@ -2,10 +2,15 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <title>MyPursu - Sarathi AI Chatbot</title>
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#2563eb">
+    <title>MyPursu - Sarathi AI</title>
     <link
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
       rel="stylesheet"
@@ -21,12 +26,17 @@
         font-family: "Inter", sans-serif;
         background: #f8fafc;
         height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile */
         overflow: hidden;
+        -webkit-overflow-scrolling: touch;
+        touch-action: manipulation;
       }
       
       .app-container {
         display: flex;
         height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile */
+        position: relative;
       }
       
       /* Header */
@@ -40,8 +50,11 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 0 20px;
+        padding: 0 16px;
         z-index: 1000;
+        border-bottom: 1px solid #e2e8f0;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
       }
       
       .header-left {
@@ -67,75 +80,6 @@
         background: #f1f5f9;
       }
       
-       .app-title {
-         font-size: 16px;
-         font-weight: 600;
-         color: #1e293b;
-         display: flex;
-         align-items: center;
-         gap: 8px;
-         cursor: pointer;
-         position: relative;
-         background: transparent;
-       }
-      
-      .dropdown-arrow {
-        font-size: 12px;
-        color: #64748b;
-        transition: transform 0.2s;
-      }
-      
-      .app-title:hover .dropdown-arrow {
-        transform: rotate(180deg);
-      }
-      
-      .dropdown-menu {
-        position: absolute;
-        top: 100%;
-        left: 0;
-        background: white;
-        border: 1px solid #e2e8f0;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        min-width: 200px;
-        opacity: 0;
-        visibility: hidden;
-        transform: translateY(-10px);
-        transition: all 0.2s;
-        z-index: 1001;
-      }
-      
-      .dropdown-menu.show {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0);
-      }
-      
-      .dropdown-item {
-        padding: 12px 16px;
-        cursor: pointer;
-        border-bottom: 1px solid #f1f5f9;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-        color: #374151;
-        transition: background 0.2s;
-      }
-      
-      .dropdown-item:last-child {
-        border-bottom: none;
-      }
-      
-      .dropdown-item:hover {
-        background: #f8fafc;
-      }
-      
-      .dropdown-item .icon {
-        width: 16px;
-        height: 16px;
-        color: #64748b;
-      }
       
       .header-right {
         display: flex;
@@ -342,8 +286,10 @@
         top: 0;
         left: 0;
         height: 100vh;
+        height: 100dvh; /* Dynamic viewport height for mobile */
         z-index: 1000;
         box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        -webkit-overflow-scrolling: touch;
       }
       
       /* Custom scrollbar for sidebar */
@@ -381,6 +327,12 @@
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         transition: all 0.2s;
         color: #333333;
+        min-width: 44px;
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
       }
       
       .sidebar-toggle:hover {
@@ -781,9 +733,11 @@
         transition: all 0.3s ease;
         background: #f8fafc;
         min-height: 100vh;
+        min-height: 100dvh; /* Dynamic viewport height for mobile */
         position: relative;
         width: 100%;
         margin-left: 0;
+        overflow: hidden;
       }
       
        .main-content.sidebar-open {
@@ -795,14 +749,15 @@
          display: flex;
          flex-direction: column;
          background: #ffffff;
-        margin: 10px 10px 10px 10px;
-        max-width: none;
-        width: calc(100% - 20px);
-         border-radius: 16px;
+         margin: 8px;
+         max-width: none;
+         width: calc(100% - 16px);
+         border-radius: 12px;
          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
          overflow: hidden;
          border: 1px solid #e2e8f0;
          position: relative;
+         -webkit-overflow-scrolling: touch;
        }
        
       .main-content.sidebar-open .chat-container {
@@ -845,9 +800,11 @@
       
       .messages-container {
         flex: 1;
-        padding: 24px;
+        padding: 16px;
         overflow-y: auto;
         background: #f8fafc;
+        -webkit-overflow-scrolling: touch;
+        scroll-behavior: smooth;
       }
       
       .message {
@@ -1026,19 +983,24 @@
       }
       
       .input-container {
-        padding: 20px 60px;
+        padding: 16px;
         border-top: 1px solid #e2e8f0;
         background: #ffffff;
+        position: sticky;
+        bottom: 0;
+        z-index: 100;
       }
       
       .input-wrapper {
         display: flex;
         align-items: center;
-        gap: 20px;
+        gap: 12px;
         background: #f8fafc;
         border: 1px solid #e2e8f0;
         border-radius: 24px;
-        padding: 20px 48px;
+        padding: 12px 20px;
+        min-height: 48px;
+        margin: 0 8px;
       }
 
       .input-btn {
@@ -1129,8 +1091,11 @@
         outline: none;
         font-size: 16px;
         color: #1e293b;
-        padding: 20px 0;
+        padding: 8px 12px;
         min-width: 0;
+        -webkit-appearance: none;
+        border-radius: 0;
+        width: 100%;
       }
       
       .message-input::placeholder {
@@ -1160,18 +1125,172 @@
         cursor: not-allowed;
       }
       
-      /* Responsive */
+      /* Mobile Responsive Styles */
       @media (max-width: 768px) {
         .sidebar {
-          display: none;
+          width: 100%;
+          transform: translateX(-100%);
+          z-index: 1001;
+        }
+        
+        .sidebar:not(.collapsed) {
+          transform: translateX(0);
+        }
+        
+        .main-content {
+          margin-left: 0 !important;
+        }
+        
+        .main-content.sidebar-open {
+          margin-left: 0 !important;
         }
         
         .chat-container {
-          margin: 10px;
+          margin: 4px;
+          width: calc(100% - 8px);
+          border-radius: 8px;
         }
         
         .message-content {
           max-width: 85%;
+          font-size: 14px;
+          line-height: 1.4;
+        }
+        
+        .input-container {
+          padding: 12px;
+        }
+        
+        .input-wrapper {
+          padding: 8px 16px;
+          gap: 8px;
+          margin: 0 4px;
+        }
+        
+        .message-input {
+          font-size: 16px; /* Prevents zoom on iOS */
+        }
+        
+        .header {
+          padding: 0 12px;
+        }
+        
+        .sidebar-toggle {
+          display: block;
+          position: fixed;
+          top: 20px;
+          left: 20px;
+          z-index: 1002;
+        }
+        
+        .quick-actions {
+          padding: 0 12px 12px 12px;
+          gap: 6px;
+        }
+        
+        .quick-action {
+          font-size: 11px;
+          padding: 6px 8px;
+        }
+        
+        .welcome-container {
+          padding: 20px 16px;
+        }
+        
+        .welcome-header h1 {
+          font-size: 2rem;
+        }
+        
+        .welcome-header p {
+          font-size: 1rem;
+        }
+        
+        .welcome-input-container {
+          margin-bottom: 20px;
+        }
+        
+        .welcome-input-wrapper {
+          padding: 2px;
+        }
+        
+        .welcome-input {
+          padding: 12px 16px;
+          font-size: 16px; /* Prevents zoom on iOS */
+        }
+      }
+      
+      @media (max-width: 480px) {
+        .chat-container {
+          margin: 2px;
+          width: calc(100% - 4px);
+          border-radius: 6px;
+        }
+        
+        .messages-container {
+          padding: 12px;
+        }
+        
+        .message {
+          margin-bottom: 12px;
+        }
+        
+        .message-content {
+          max-width: 90%;
+          padding: 10px 12px;
+          font-size: 14px;
+        }
+        
+        .input-container {
+          padding: 8px;
+        }
+        
+        .input-wrapper {
+          padding: 6px 12px;
+          gap: 6px;
+          margin: 0 2px;
+        }
+        
+        .send-btn {
+          width: 28px;
+          height: 28px;
+        }
+        
+        .header {
+          height: 56px;
+          padding: 0 8px;
+        }
+        
+        .main-content {
+          padding-top: 56px;
+        }
+        
+        .welcome-header h1 {
+          font-size: 1.8rem;
+        }
+        
+        .welcome-header p {
+          font-size: 0.9rem;
+        }
+      }
+      
+      /* Touch-friendly improvements */
+      @media (hover: none) and (pointer: coarse) {
+        .chat-history-item,
+        .nav-item,
+        .media-item {
+          min-height: 44px; /* iOS touch target size */
+        }
+        
+        .send-btn,
+        .input-btn,
+        .header-btn {
+          min-width: 44px;
+          min-height: 44px;
+        }
+        
+        .quick-action {
+          min-height: 36px;
+          padding: 8px 12px;
         }
       }
     </style>
@@ -1181,28 +1300,6 @@
     <div class="header">
       <div class="header-left">
         <button class="close-btn">✕</button>
-        <div class="app-title" id="app-title">
-          MyPursu UI
-          <span class="dropdown-arrow">▼</span>
-          <div class="dropdown-menu" id="dropdown-menu">
-            <div class="dropdown-item">
-              <span class="icon">👤</span>
-              <span>John Doe</span>
-            </div>
-            <div class="dropdown-item">
-              <span class="icon">⚙️</span>
-              <span>Settings</span>
-            </div>
-            <div class="dropdown-item">
-              <span class="icon">ℹ️</span>
-              <span>Version 2.1.0</span>
-            </div>
-            <div class="dropdown-item">
-              <span class="icon">🚪</span>
-              <span>Sign Out</span>
-            </div>
-          </div>
-        </div>
       </div>
       <div class="header-right">
         <div class="offer-container">
@@ -1405,8 +1502,6 @@
       const toggleDropdown = document.getElementById("toggle-dropdown");
       const uploadOption = document.getElementById("upload-option");
       const downloadOption = document.getElementById("download-option");
-      const appTitle = document.getElementById("app-title");
-      const dropdownMenu = document.getElementById("dropdown-menu");
       const sidebar = document.getElementById("sidebar");
       const sidebarToggle = document.getElementById("sidebar-toggle");
       const mainContent = document.querySelector(".main-content");
@@ -1426,12 +1521,12 @@
       window.onload = () => {
         loadChatHistory();
         loadMediaLibrary();
+        // Check if there's an existing session, if not create new one
         initializeSession();
-        // Show normal chat interface by default instead of welcome screen
-        showNormalChatInterface();
         setupEventListeners();
         initializeSidebarState();
         updateExchangeRates();
+        setupMobileOptimizations();
       };
 
       // Show normal chat interface (not welcome screen)
@@ -1453,23 +1548,36 @@
       // Session Management Functions
       async function initializeSession() {
         try {
-          // Try to get existing session from localStorage
-          currentSessionId = localStorage.getItem('currentSessionId');
+          // Check if this is a new tab/window or a refresh
+          const isNewTab = !sessionStorage.getItem('tabInitialized');
           
-          if (!currentSessionId) {
-            // Create new session
-            const response = await fetch('/session/new');
-            const data = await response.json();
-            currentSessionId = data.session_id;
-            localStorage.setItem('currentSessionId', currentSessionId);
+          if (isNewTab) {
+            // This is a new tab/window - start fresh
+            sessionStorage.setItem('tabInitialized', 'true');
+            await createNewSession();
+          } else {
+            // This is a refresh - restore current session
+            currentSessionId = localStorage.getItem('currentSessionId');
+            
+            if (!currentSessionId) {
+              // No existing session, create new one
+              const response = await fetch('/session/new');
+              const data = await response.json();
+              currentSessionId = data.session_id;
+              localStorage.setItem('currentSessionId', currentSessionId);
+            }
+            
+            // Load conversation history for this session
+            await loadSessionHistory();
+            
+            // Show normal chat interface instead of welcome screen
+            showNormalChatInterface();
           }
-          
-          // Load conversation history for this session
-          await loadSessionHistory();
         } catch (error) {
           console.error('Error initializing session:', error);
           // Fallback: create a local session ID
           currentSessionId = 'local_' + Date.now();
+          showNormalChatInterface();
         }
       }
 
@@ -1487,7 +1595,7 @@
             
             data.history.forEach(msg => {
               const sender = msg.role === 'user' ? 'user' : 'bot';
-              appendMessage(msg.message, sender, false); // false = don't save to current chat
+              appendMessage(msg.message, sender, true); // true = save to current chat
             });
           }
         } catch (error) {
@@ -1536,7 +1644,7 @@
           </div>
           <div class="welcome-input-container">
             <div class="welcome-input-wrapper">
-              <input type="text" id="welcome-input" placeholder="Ask your question here (min 3 words)" class="welcome-input">
+              <input type="text" id="welcome-input" placeholder="Ask your question here" class="welcome-input">
               <button id="welcome-send-btn" class="welcome-send-btn">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -1586,7 +1694,7 @@
           // Send button click
           welcomeSendBtn.onclick = () => {
             const message = welcomeInput.value.trim();
-            if (message.length >= 3) {
+            if (message.length > 0) {
               transitionToNormalChat(message);
             }
           };
@@ -1595,7 +1703,7 @@
           welcomeInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
               const message = welcomeInput.value.trim();
-              if (message.length >= 3) {
+              if (message.length > 0) {
                 transitionToNormalChat(message);
               }
             }
@@ -1685,17 +1793,86 @@
         sidebarToggle.style.left = sidebarCollapsed ? '20px' : '300px';
       }
 
-      function setupEventListeners() {
-        // Dropdown toggle
-        appTitle.onclick = (e) => {
-          e.stopPropagation();
-          dropdownMenu.classList.toggle('show');
-        };
+      function setupMobileOptimizations() {
+        // Prevent zoom on double tap
+        let lastTouchEnd = 0;
+        document.addEventListener('touchend', function (event) {
+          const now = (new Date()).getTime();
+          if (now - lastTouchEnd <= 300) {
+            event.preventDefault();
+          }
+          lastTouchEnd = now;
+        }, false);
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', () => {
-          dropdownMenu.classList.remove('show');
+        // Prevent pull-to-refresh on mobile
+        document.addEventListener('touchmove', function(e) {
+          if (e.touches.length > 1) {
+            e.preventDefault();
+          }
+        }, { passive: false });
+
+        // Handle viewport changes for mobile keyboards
+        const viewport = document.querySelector('meta[name=viewport]');
+        let initialViewport = viewport.getAttribute('content');
+        
+        window.addEventListener('resize', function() {
+          if (window.innerHeight < 500) {
+            // Keyboard is likely open
+            viewport.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
+          } else {
+            // Keyboard is likely closed
+            viewport.setAttribute('content', initialViewport);
+          }
         });
+
+        // Auto-focus input on mobile when keyboard opens
+        const messageInput = document.getElementById('user-input');
+        if (messageInput) {
+          messageInput.addEventListener('focus', function() {
+            setTimeout(() => {
+              this.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+          });
+        }
+
+        // Improve touch scrolling
+        const messagesContainer = document.getElementById('messages');
+        if (messagesContainer) {
+          messagesContainer.style.webkitOverflowScrolling = 'touch';
+        }
+
+        // Save current state before page unload
+        window.addEventListener('beforeunload', () => {
+          saveChat();
+        });
+
+        // Clean up sessionStorage when tab is closed
+        window.addEventListener('beforeunload', () => {
+          // Don't remove sessionStorage immediately, let it persist for a moment
+          // This helps distinguish between refresh and new tab
+        });
+
+        // Save current state periodically
+        setInterval(() => {
+          if (currentChatMessages.length > 0) {
+            saveChat();
+          }
+        }, 30000); // Save every 30 seconds
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', () => {
+          if (document.visibilityState === 'visible') {
+            // Page became visible - check if we need to restore session
+            const tabInitialized = sessionStorage.getItem('tabInitialized');
+            if (!tabInitialized) {
+              // This might be a new tab, start fresh
+              sessionStorage.setItem('tabInitialized', 'true');
+            }
+          }
+        });
+      }
+
+      function setupEventListeners() {
 
         // Search functionality
         searchInput.addEventListener('input', (e) => {
@@ -1774,6 +1951,19 @@
             sidebarToggle.style.left = '300px';
           }
         };
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', (e) => {
+          if (window.innerWidth <= 768 && !sidebarCollapsed) {
+            if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+              sidebarCollapsed = true;
+              sidebar.classList.add('collapsed');
+              mainContent.classList.remove('sidebar-open');
+              sidebarToggle.textContent = '☰';
+              sidebarToggle.style.left = '20px';
+            }
+          }
+        });
 
         // Collapsible sections functionality
         setupCollapsibleSections();
@@ -2024,7 +2214,12 @@
       }
 
       function saveChat() {
-        if (!currentChatId || currentChatMessages.length === 0) return;
+        if (currentChatMessages.length === 0) return;
+        
+        // Generate chat ID if not exists
+        if (!currentChatId) {
+          currentChatId = Date.now().toString();
+        }
         
         const firstUserMessage = currentChatMessages.find(msg => msg.sender === 'user');
         const title = firstUserMessage ? 
@@ -2037,7 +2232,7 @@
           id: currentChatId,
           title: title,
           timestamp: Date.now(),
-          messages: currentChatMessages,
+          messages: [...currentChatMessages], // Create a copy
           sessionId: currentSessionId
         };
         
@@ -2171,10 +2366,8 @@
             timestamp: Date.now()
           });
           
-          // Auto-save chat after user messages
-          if (sender === 'user') {
-            setTimeout(() => saveChat(), 1000);
-          }
+          // Auto-save chat after every message
+          setTimeout(() => saveChat(), 500);
         }
       }
 
