@@ -115,8 +115,8 @@ def handle_message(user_id: str, text: str, enabled_intents: set[str]) -> Tuple[
             response = client.chat.completions.create(
                 model=os.getenv("AZURE_OPENAI_DEPLOYMENT"),
                 messages=[{"role": "user", "content": text}],
-                temperature=0.5,
-                max_tokens=500
+                temperature=0.8,
+                max_tokens=150
             )
             reply_text = response.choices[0].message.content
             return reply_text, tool_calls, False, "chatgpt"
